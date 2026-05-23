@@ -87,7 +87,9 @@ func Run(cfg Config) error {
 	registry := tunnel.NewRegistry(pool)
 	hub := api.NewHub()
 
-	// ── REST API + embedded dashboard ─────────────────────────────────────
+	// ── REST API + embedded dashboard (plain HTTP) ────────────────────────
+	// The control port uses TLS for security; the API/dashboard uses plain
+	// HTTP so browsers can connect without certificate warnings.
 	srv := &api.Server{
 		DB:              database,
 		Registry:        registry,
@@ -96,18 +98,15 @@ func Run(cfg Config) error {
 		StartTime:       time.Now(),
 	}
 	apiAddr := fmt.Sprintf("%s:%d", cfg.APIHost, cfg.APIPort)
-	apiListener, err := tls.Listen("tcp", apiAddr, tlsCfg)
-	if err != nil {
-		return fmt.Errorf("api listen %s: %w", apiAddr, err)
-	}
 	httpServer := &http.Server{
+		Addr:         apiAddr,
 		Handler:      api.NewRouter(srv),
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,
 	}
 	go func() {
-		if err := httpServer.Serve(apiListener); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("api: %v", err)
 		}
 	}()
@@ -129,8 +128,8 @@ func Run(cfg Config) error {
 	log.Println("shutting down…")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	httpServer.Shutdown(ctx) //nolint:errcheck
-	controlListener.Close()  //nolint:errcheck
+	httpServer.Shutdown(ctx)  //nolint:errcheck
+	controlListener.Close()   //nolint:errcheck
 	log.Println("bye.")
 	return nil
 }
