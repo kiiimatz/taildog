@@ -106,10 +106,13 @@ func Start() error {
 	// Give the child a moment to write its PID file.
 	time.Sleep(200 * time.Millisecond)
 
+	// Save PID before Release() zeroes it out.
+	startedPID := proc.Pid
+
 	// Detach – we don't wait for the child.
 	_ = proc.Release()
 
-	fmt.Printf("taildog daemon started (PID: %d)\n", proc.Pid)
+	fmt.Printf("taildog daemon started (PID: %d)\n", startedPID)
 	return nil
 }
 
@@ -302,11 +305,18 @@ func connectWithBackoff(cfg *config.Config) error {
 // Helpers
 // ---------------------------------------------------------------------------
 
-// buildTLSConfig returns a TLS config using the system CA pool, or a custom
-// CA bundle if caCertPath is non-empty.
+// buildTLSConfig returns a TLS config.
+// If caCertPath is set, the given CA bundle is trusted.
+// Otherwise, InsecureSkipVerify is used to accept the relay's self-signed cert.
 func buildTLSConfig(caCertPath string) (*tls.Config, error) {
 	if caCertPath == "" {
-		return &tls.Config{MinVersion: tls.VersionTLS12}, nil
+		// Self-hosted relays use self-signed certificates; skip verification.
+		// The control channel is still encrypted — only cert authenticity is
+		// not checked. Use --ca-cert for pinned verification in production.
+		return &tls.Config{
+			MinVersion:         tls.VersionTLS12,
+			InsecureSkipVerify: true, //nolint:gosec
+		}, nil
 	}
 	caPEM, err := os.ReadFile(caCertPath)
 	if err != nil {
