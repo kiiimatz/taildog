@@ -14,7 +14,7 @@ import {
   useReactFlow,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import { RotateCcw, ZoomIn, ZoomOut, Download } from 'lucide-react'
+import { MoreHorizontal } from 'lucide-react'
 import ServerNode from './ServerNode'
 import type { ServerNodeData } from './ServerNode'
 import ClientNode from './ClientNode'
@@ -22,7 +22,6 @@ import type { ClientNodeData } from './ClientNode'
 import TunnelConfigModal from './TunnelConfigModal'
 import { useAppStore } from '../../store'
 import { createTunnel, deleteTunnel } from '../../lib/api'
-import * as yaml from 'js-yaml'
 
 const nodeTypes: NodeTypes = {
   server: ServerNode,
@@ -38,7 +37,7 @@ interface PendingConnection {
 }
 
 export default function Canvas() {
-  const { fitView, zoomIn, zoomOut } = useReactFlow()
+  const { fitView } = useReactFlow()
   const [nodes, setNodes, onNodesChange] = useNodesState<RFNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [pending, setPending] = useState<PendingConnection | null>(null)
@@ -169,9 +168,10 @@ export default function Canvas() {
             target: 'server',
             type: 'smoothstep',
             animated: true,
-            style: { stroke: '#378ADD', strokeWidth: 2 },
+            style: { stroke: '#378ADD', strokeWidth: 1.5 },
             label: `:${localPort} → :${assignedPort}`,
-            labelStyle: { fill: '#9ca3af', fontSize: 11 },
+            labelStyle: { fill: '#6b7280', fontSize: 11 },
+            labelBgStyle: { fill: '#161622' },
             markerEnd: { type: MarkerType.ArrowClosed, color: '#378ADD' },
             data: { tunnelID: edgeID, protocol: proto, localPort, remotePort: assignedPort },
           },
@@ -194,20 +194,6 @@ export default function Canvas() {
     }
   }
 
-  function handleDownloadConfig() {
-    const tunnels = edges.map((e) => ({
-      id: e.id,
-      protocol: (e.data as { protocol?: string })?.protocol,
-      localPort: (e.data as { localPort?: number })?.localPort,
-      remotePort: (e.data as { remotePort?: number })?.remotePort,
-    }))
-    const blob = new Blob([yaml.dump({ tunnels })], { type: 'application/yaml' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = 'taildog-tunnels.yaml'
-    a.click()
-  }
-
   return (
     <div
       ref={reactFlowWrapper}
@@ -217,7 +203,13 @@ export default function Canvas() {
       onDragLeave={() => setDragOver(false)}
     >
       {dragOver && (
-        <div className="absolute inset-0 z-10 border-2 border-dashed border-brand/50 bg-brand/5 pointer-events-none rounded-lg m-2" />
+        <div
+          className="absolute inset-0 z-10 pointer-events-none m-2 rounded-xl"
+          style={{
+            border: '2px dashed rgba(55,138,221,0.4)',
+            background: 'rgba(55,138,221,0.04)',
+          }}
+        />
       )}
 
       <ReactFlow
@@ -230,40 +222,37 @@ export default function Canvas() {
         nodeTypes={nodeTypes}
         fitView
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-        className="canvas-bg"
         deleteKeyCode={null}
+        style={{ background: '#0c0d14' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#2d3044" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={24}
+          size={1}
+          color="rgba(255,255,255,0.06)"
+        />
 
-        {/* Toolbar */}
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
+        {/* Top-right menu button */}
+        <div className="absolute top-4 right-4 z-10">
           <button
             onClick={() => fitView({ padding: 0.2, duration: 500 })}
-            className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
-            title="Reset view"
+            className="flex items-center justify-center w-8 h-8 rounded-lg transition-colors"
+            style={{
+              background: '#161622',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: '#6b7280',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = '#e8e9f0'
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.15)'
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'
+              ;(e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.08)'
+            }}
+            title="Fit view"
           >
-            <RotateCcw size={16} />
-          </button>
-          <button
-            onClick={() => zoomIn({ duration: 200 })}
-            className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
-            title="Zoom in"
-          >
-            <ZoomIn size={16} />
-          </button>
-          <button
-            onClick={() => zoomOut({ duration: 200 })}
-            className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
-            title="Zoom out"
-          >
-            <ZoomOut size={16} />
-          </button>
-          <button
-            onClick={handleDownloadConfig}
-            className="rounded-lg bg-gray-900 border border-gray-700 p-2 text-gray-400 hover:text-white hover:border-gray-600 transition-colors"
-            title="Download config as YAML"
-          >
-            <Download size={16} />
+            <MoreHorizontal size={15} />
           </button>
         </div>
       </ReactFlow>

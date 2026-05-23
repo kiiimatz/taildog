@@ -1,6 +1,5 @@
 import { memo } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
-import { Server } from 'lucide-react'
 
 export interface ServerNodeData extends Record<string, unknown> {
   name: string
@@ -10,30 +9,68 @@ export interface ServerNodeData extends Record<string, unknown> {
 
 function ServerNode({ data }: NodeProps) {
   const d = data as unknown as ServerNodeData
+
   return (
-    <div className="relative min-w-[200px] rounded-xl border border-brand/40 bg-gray-900 shadow-lg shadow-brand/10">
+    <div
+      className="relative"
+      style={{
+        minWidth: 200,
+        borderRadius: 12,
+        border: '1.5px solid #378ADD',
+        background: '#161622',
+        boxShadow: '0 0 24px rgba(55,138,221,0.12)',
+      }}
+    >
+      {/* Left handle — target */}
       <Handle
         type="target"
         position={Position.Left}
-        className="!w-4 !h-4 !rounded-full !border-2 !border-brand !bg-gray-900"
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: '50%',
+          border: '2px solid #378ADD',
+          background: '#ffffff',
+          left: -7,
+        }}
       />
 
       <div className="px-4 py-3">
-        <p className="text-[10px] uppercase tracking-widest text-gray-500 mb-1">server</p>
-        <div className="flex items-center gap-2 mb-2">
-          <Server size={14} className="text-brand" />
-          <span className="font-semibold text-white text-sm">{d.name || 'relay'}</span>
-        </div>
-        <p className="text-xs text-gray-400 mb-3">{d.ip || '—'}</p>
+        {/* Label */}
+        <p
+          className="text-[10px] font-semibold uppercase mb-1"
+          style={{ color: '#3d3f52', letterSpacing: '0.1em' }}
+        >
+          Server
+        </p>
 
+        {/* Hostname */}
+        <p
+          className="font-semibold text-sm mb-0.5"
+          style={{ color: '#e8e9f0' }}
+        >
+          {d.name || 'relay'}
+        </p>
+
+        {/* IP */}
+        <p className="text-xs mb-3" style={{ color: '#6b7280' }}>
+          {d.ip || '—'}
+        </p>
+
+        {/* Port badges */}
         {d.ports.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {d.ports.map((p) => (
               <span
                 key={`${p.protocol}-${p.port}`}
-                className="rounded-full bg-brand/10 border border-brand/30 px-2 py-0.5 text-[10px] text-brand font-mono"
+                className="rounded-md px-2 py-0.5 text-[10px] font-mono"
+                style={{
+                  background: '#0f1e36',
+                  color: '#60a5fa',
+                  border: '1px solid rgba(55,138,221,0.25)',
+                }}
               >
-                {p.protocol}:{p.port}
+                :{p.port}
               </span>
             ))}
           </div>

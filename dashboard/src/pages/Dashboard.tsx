@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import { ReactFlowProvider } from '@xyflow/react'
 import Sidebar from '../components/Sidebar'
-import Topbar from '../components/Topbar'
 import Canvas from '../components/canvas/Canvas'
 import Toasts from '../components/Toasts'
 import { getClients, getServerInfo } from '../lib/api'
@@ -29,14 +28,11 @@ export default function Dashboard() {
 
   return (
     <ReactFlowProvider>
-      <div className="flex flex-col h-screen">
-        <Topbar />
-        <div className="flex flex-1 overflow-hidden">
-          <Sidebar />
-          <Canvas />
-        </div>
-        <Toasts />
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+        <Sidebar />
+        <Canvas />
       </div>
+      <Toasts />
     </ReactFlowProvider>
   )
 }

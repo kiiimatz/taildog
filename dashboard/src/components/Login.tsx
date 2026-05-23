@@ -67,25 +67,62 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0f1117]">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-800 bg-gray-900 p-8 shadow-2xl">
-        {/* Logo */}
+    <div
+      className="flex min-h-screen items-center justify-center"
+      style={{ background: '#0c0d14' }}
+    >
+      <div
+        className="w-full max-w-sm rounded-2xl p-8"
+        style={{
+          background: '#111119',
+          border: '1px solid rgba(255,255,255,0.07)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+        }}
+      >
+        {/* Logo / wordmark */}
         <div className="mb-8 text-center">
-          <div className="text-4xl mb-2">🐕</div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">taildog</h1>
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-4"
+            style={{ background: 'rgba(55,138,221,0.12)', border: '1px solid rgba(55,138,221,0.2)' }}
+          >
+            <span style={{ color: '#378ADD', fontSize: 22 }}>⊙</span>
+          </div>
+          <h1
+            className="text-xl font-semibold tracking-tight"
+            style={{ color: '#e8e9f0' }}
+          >
+            taildog
+          </h1>
+          <p className="text-xs mt-1" style={{ color: '#3d3f52' }}>
+            Sign in to continue
+          </p>
         </div>
 
         {isLocked ? (
-          <div className="rounded-lg bg-red-900/30 border border-red-700 p-4 text-center">
-            <p className="text-red-400 font-medium">Too many attempts</p>
-            <p className="text-red-300 text-sm mt-1">
+          <div
+            className="rounded-xl p-4 text-center"
+            style={{
+              background: 'rgba(127,29,29,0.25)',
+              border: '1px solid rgba(239,68,68,0.25)',
+            }}
+          >
+            <p className="text-sm font-medium" style={{ color: '#fca5a5' }}>
+              Too many attempts
+            </p>
+            <p className="text-sm mt-1" style={{ color: '#f87171' }}>
               Try again in {Math.floor(secondsLeft / 60)}m {secondsLeft % 60}s
             </p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Username */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Username</label>
+              <label
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: '#6b7280' }}
+              >
+                Username
+              </label>
               <input
                 type="text"
                 value={username}
@@ -93,12 +130,29 @@ export default function Login() {
                 autoComplete="username"
                 required
                 disabled={loading}
-                className="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent disabled:opacity-50"
+                className="w-full rounded-lg px-3 py-2.5 text-sm focus:outline-none disabled:opacity-50 transition-colors"
+                style={{
+                  background: '#0c0d14',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  color: '#e8e9f0',
+                }}
+                onFocus={(e) => {
+                  (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(55,138,221,0.5)'
+                }}
+                onBlur={(e) => {
+                  (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.08)'
+                }}
               />
             </div>
 
+            {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
+              <label
+                className="block text-xs font-medium mb-1.5"
+                style={{ color: '#6b7280' }}
+              >
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -107,35 +161,72 @@ export default function Login() {
                   autoComplete="current-password"
                   required
                   disabled={loading}
-                  className="w-full rounded-lg bg-gray-800 border border-gray-700 px-3 py-2 pr-10 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent disabled:opacity-50"
+                  className="w-full rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none disabled:opacity-50 transition-colors"
+                  style={{
+                    background: '#0c0d14',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#e8e9f0',
+                  }}
+                  onFocus={(e) => {
+                    (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(55,138,221,0.5)'
+                  }}
+                  onBlur={(e) => {
+                    (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.08)'
+                  }}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                  style={{ color: '#3d3f52' }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color = '#6b7280'
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.color = '#3d3f52'
+                  }}
                   tabIndex={-1}
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
             </div>
 
+            {/* Error */}
             {error && (
-              <p className="text-sm text-red-400 rounded-lg bg-red-900/20 border border-red-800 px-3 py-2">
+              <p
+                className="text-xs rounded-lg px-3 py-2"
+                style={{
+                  color: '#fca5a5',
+                  background: 'rgba(127,29,29,0.2)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                }}
+              >
                 {error}
               </p>
             )}
 
+            {/* Attempts warning */}
             {attempts > 0 && attempts < MAX_ATTEMPTS && !error && (
-              <p className="text-xs text-yellow-500">
+              <p className="text-xs" style={{ color: '#f59e0b' }}>
                 {MAX_ATTEMPTS - attempts} attempt{MAX_ATTEMPTS - attempts !== 1 ? 's' : ''} remaining
               </p>
             )}
 
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading || !username || !password}
-              className="w-full rounded-lg bg-brand py-2.5 text-white font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full rounded-lg py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: '#378ADD', color: '#ffffff' }}
+              onMouseEnter={(e) => {
+                if (!loading && username && password) {
+                  (e.currentTarget as HTMLButtonElement).style.background = '#4a9de8'
+                }
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.background = '#378ADD'
+              }}
             >
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
@@ -143,7 +234,9 @@ export default function Login() {
         )}
 
         <div className="mt-6 text-center">
-          <span className="text-xs text-gray-600">── taildog v0.1.0 ──</span>
+          <span className="text-[11px]" style={{ color: '#3d3f52' }}>
+            taildog v0.1.0
+          </span>
         </div>
       </div>
     </div>

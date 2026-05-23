@@ -2,37 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  margin: 0;
-  font-family: system-ui, -apple-system, sans-serif;
-  background: #0f1117;
-  color: #e5e7eb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0c0d14;
+  color: #e8e9f0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 #root {
   width: 100%;
   height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
 /* React Flow overrides */
-.react-flow__background {
-  background: #0f1117;
-}
+.react-flow__background { background: #0c0d14; }
+.react-flow__pane { cursor: default; }
+.react-flow__node { cursor: default; }
 
 .react-flow__edge-path {
   stroke: #378ADD;
-  stroke-width: 2;
+  stroke-width: 1.5;
 }
 
-/* Dot grid canvas background */
-.canvas-bg {
-  background-color: #0f1117;
-  background-image: radial-gradient(circle, #2d3044 1px, transparent 1px);
-  background-size: 24px 24px;
-}
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
