@@ -18,20 +18,24 @@ export function connectEvents(onOpen?: () => void) {
   ws = new WebSocket(url)
 
   ws.onopen = () => {
+    console.log('[taildog] WS connected to', url)
     // Re-fetch data on every (re)connect so we never miss events that fired
     // while the WebSocket was down.
     onOpenCallback?.()
   }
 
   ws.onmessage = (ev) => {
+    console.log('[taildog] WS message:', ev.data)
     try {
       const { type, data } = JSON.parse(ev.data)
       const store = useAppStore.getState()
       switch (type) {
         case 'CLIENT_CONNECTED':
+          console.log('[taildog] CLIENT_CONNECTED:', data)
           store.upsertClient({ ...data, online: true })
           break
         case 'CLIENT_DISCONNECTED':
+          console.log('[taildog] CLIENT_DISCONNECTED:', data)
           // Only flip the online flag — keep the existing client data intact.
           store.setClientOnline(data.id, false)
           break
@@ -47,10 +51,12 @@ export function connectEvents(onOpen?: () => void) {
     }
   }
 
-  ws.onclose = () => {
+  ws.onclose = (ev) => {
+    console.log('[taildog] WS closed — code:', ev.code, 'reason:', ev.reason)
     reconnectTimer = setTimeout(() => connectEvents(), 3000)
   }
-  ws.onerror = () => {
+  ws.onerror = (ev) => {
+    console.error('[taildog] WS error:', ev)
     ws?.close()
   }
 }

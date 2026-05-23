@@ -96,6 +96,12 @@ func Run(cfg Config) error {
 		Hub:             hub,
 		DashboardOrigin: cfg.DashboardOrigin,
 		StartTime:       time.Now(),
+		StartTunnelProxy: func(remotePort int, tunnelID, clientID string) error {
+			return proxies.start(remotePort, tunnelID, clientID)
+		},
+		StopTunnelProxy: func(tunnelID string) {
+			proxies.stop(tunnelID)
+		},
 	}
 	apiAddr := fmt.Sprintf("%s:%d", cfg.APIHost, cfg.APIPort)
 	httpServer := &http.Server{

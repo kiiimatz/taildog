@@ -28,11 +28,13 @@ type claimsCtxKey struct{}
 
 // Server holds the shared state needed by all HTTP handlers.
 type Server struct {
-	DB              *db.DB
-	Registry        *tunnel.Registry
-	Hub             *Hub
-	DashboardOrigin string
-	StartTime       time.Time
+	DB               *db.DB
+	Registry         *tunnel.Registry
+	Hub              *Hub
+	DashboardOrigin  string
+	StartTime        time.Time
+	StartTunnelProxy func(remotePort int, tunnelID, clientID string) error
+	StopTunnelProxy  func(tunnelID string)
 }
 
 // NewRouter builds and returns the gorilla/mux router wired to s.
@@ -45,6 +47,9 @@ func NewRouter(s *Server) http.Handler {
 	// Public routes.
 	r.HandleFunc("/api/auth/login", s.handleLogin).Methods(http.MethodPost, http.MethodOptions)
 	r.HandleFunc("/api/auth/refresh", s.handleRefresh).Methods(http.MethodPost, http.MethodOptions)
+
+	// Debug endpoint — no auth, returns registry state for troubleshooting.
+	r.HandleFunc("/api/debug", s.handleDebug).Methods(http.MethodGet, http.MethodOptions)
 
 	// Authenticated routes.
 	authed := r.PathPrefix("/api").Subrouter()
@@ -359,6 +364,11 @@ func (s *Server) handleCreateTunnel(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Hub.Broadcast("TUNNEL_CREATED", t)
+	if s.StartTunnelProxy != nil {
+		if err := s.StartTunnelProxy(assigned, t.ID, body.ClientID); err != nil {
+			log.Printf("tunnel proxy start: %v", err)
+		}
+	}
 	claims := claimsFromCtx(r.Context())
 	if claims != nil {
 		s.DB.AddAuditLog("TUNNEL_CREATED", claims.UserID, //nolint:errcheck
@@ -377,6 +387,9 @@ func (s *Server) handleDeleteTunnel(w http.ResponseWriter, r *http.Request) {
 	if err := s.Registry.RemoveTunnel(id); err != nil {
 		jsonError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+	if s.StopTunnelProxy != nil {
+		s.StopTunnelProxy(id)
 	}
 	s.Hub.Broadcast("TUNNEL_DELETED", map[string]string{"id": id})
 	claims := claimsFromCtx(r.Context())
@@ -579,6 +592,15 @@ func outboundIP() string {
 	}
 	defer conn.Close()
 	return conn.LocalAddr().(*net.UDPAddr).IP.String()
+}
+
+func (s *Server) handleDebug(w http.ResponseWriter, r *http.Request) {
+	clients := s.Registry.ListClients()
+	jsonOK(w, map[string]interface{}{
+		"registryClients": len(clients),
+		"wsSubscribers":   s.Hub.Count(),
+		"clients":         clients,
+	})
 }
 
 func sha256Token(token string) string {

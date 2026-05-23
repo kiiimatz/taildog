@@ -178,7 +178,10 @@ export default function Canvas() {
     loadedRef.current = true
 
     getCanvasState().then((saved) => {
-      if (!saved || !Object.keys(saved).length) return
+      if (!saved || !Object.keys(saved).length) {
+        canSaveRef.current = true
+        return
+      }
 
       // Restore canvas clients (positions)
       if (Array.isArray(saved.canvasClients) && (saved.canvasClients as CanvasClient[]).length > 0) {

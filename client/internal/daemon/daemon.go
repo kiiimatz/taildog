@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -193,12 +195,21 @@ func Connect(cfg *config.Config) error {
 	defer conn.Close()
 	log.Printf("connected to relay %s", addr)
 
+	// Mutex-protected encoder — shared by ping goroutine and tunnel conn readers.
+	var encMu sync.Mutex
 	enc := json.NewEncoder(conn)
+	safeEncode := func(v interface{}) error {
+		encMu.Lock()
+		err := enc.Encode(v)
+		encMu.Unlock()
+		return err
+	}
+
 	dec := json.NewDecoder(conn)
 
-	// Step 3: hello
+	// Hello
 	hostname, _ := os.Hostname()
-	if err := enc.Encode(helloMsg{
+	if err := safeEncode(helloMsg{
 		Type:     "hello",
 		ClientID: clientIDFromConfig(),
 		Name:     hostname,
@@ -207,16 +218,16 @@ func Connect(cfg *config.Config) error {
 		return fmt.Errorf("sending hello: %w", err)
 	}
 
-	// Step 4: welcome
+	// Welcome
 	var welcome map[string]interface{}
 	if err := dec.Decode(&welcome); err != nil {
 		return fmt.Errorf("reading welcome: %w", err)
 	}
 	log.Printf("welcome received: %v", welcome)
 
-	// Step 5: register tunnels
+	// Register tunnels
 	for _, t := range cfg.Tunnels {
-		if err := enc.Encode(registerMsg{
+		if err := safeEncode(registerMsg{
 			Type:       "register",
 			TunnelID:   t.ID,
 			Protocol:   t.Protocol,
@@ -229,38 +240,124 @@ func Connect(cfg *config.Config) error {
 			t.ID, t.Protocol, t.LocalPort, t.RemotePort)
 	}
 
-	// Step 6: ping loop
+	// Active local connections: connID → net.Conn
+	var localMu sync.Mutex
+	localConns := make(map[string]net.Conn)
+
+	closeLocal := func(connID string, sendFrame bool) {
+		localMu.Lock()
+		c, ok := localConns[connID]
+		delete(localConns, connID)
+		localMu.Unlock()
+		if ok {
+			c.Close()
+		}
+		if sendFrame {
+			safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck
+		}
+	}
+
+	// Ping loop
 	pingErrCh := make(chan error, 1)
 	go func() {
 		ticker := time.NewTicker(pingPeriod)
 		defer ticker.Stop()
 		for range ticker.C {
-			if err := enc.Encode(pingMsg{Type: "ping"}); err != nil {
+			if err := safeEncode(pingMsg{Type: "ping"}); err != nil {
 				pingErrCh <- err
 				return
 			}
 		}
 	}()
 
-	// Step 7 (stub): inbound frame reader
+	// Frame reader
 	frameCh := make(chan error, 1)
 	go func() {
 		for {
-			var frame map[string]interface{}
-			if err := dec.Decode(&frame); err != nil {
+			var raw map[string]json.RawMessage
+			if err := dec.Decode(&raw); err != nil {
 				frameCh <- err
 				return
 			}
-			frameType, _ := frame["type"].(string)
+			var frameType string
+			if err := json.Unmarshal(raw["type"], &frameType); err != nil {
+				continue
+			}
+
 			switch frameType {
 			case "pong":
-				// expected keep-alive reply, ignore
+				// expected keep-alive reply
+
+			case "open":
+				var tunnelID, connID string
+				json.Unmarshal(raw["tunnelID"], &tunnelID) //nolint:errcheck
+				json.Unmarshal(raw["connID"], &connID)    //nolint:errcheck
+
+				// Find local port for this tunnel ID.
+				localPort := 0
+				for _, t := range cfg.Tunnels {
+					if t.ID == tunnelID {
+						localPort = t.LocalPort
+						break
+					}
+				}
+				if localPort == 0 {
+					log.Printf("open: unknown tunnel %s", tunnelID)
+					safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck
+					continue
+				}
+
+				localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
+				if err != nil {
+					log.Printf("open: dial local:%d: %v", localPort, err)
+					safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck
+					continue
+				}
+
+				localMu.Lock()
+				localConns[connID] = localConn
+				localMu.Unlock()
+				log.Printf("tunnel open: connID=%s → local:%d", connID, localPort)
+
+				// Read from local connection, send data frames to relay.
+				go func(connID string, localConn net.Conn) {
+					defer closeLocal(connID, true)
+					buf := make([]byte, 32*1024)
+					for {
+						n, err := localConn.Read(buf)
+						if n > 0 {
+							payload := base64.StdEncoding.EncodeToString(buf[:n])
+							if sendErr := safeEncode(map[string]string{
+								"type": "data", "connID": connID, "payload": payload,
+							}); sendErr != nil {
+								return
+							}
+						}
+						if err != nil {
+							return
+						}
+					}
+				}(connID, localConn)
+
 			case "data":
-				// TODO: proxy frame payload to the local port.
-				log.Printf("data frame for tunnel %v (TCP proxy not yet implemented)",
-					frame["tunnelID"])
-			default:
-				log.Printf("unhandled frame type: %q", frameType)
+				var connID, payload string
+				json.Unmarshal(raw["connID"], &connID)   //nolint:errcheck
+				json.Unmarshal(raw["payload"], &payload) //nolint:errcheck
+				data, err := base64.StdEncoding.DecodeString(payload)
+				if err != nil {
+					continue
+				}
+				localMu.Lock()
+				c, ok := localConns[connID]
+				localMu.Unlock()
+				if ok {
+					c.Write(data) //nolint:errcheck
+				}
+
+			case "close":
+				var connID string
+				json.Unmarshal(raw["connID"], &connID) //nolint:errcheck
+				closeLocal(connID, false)
 			}
 		}
 	}()

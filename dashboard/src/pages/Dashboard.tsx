@@ -15,10 +15,11 @@ export default function Dashboard() {
     async function fetchData() {
       try {
         const [clients, info] = await Promise.all([getClients(), getServerInfo()])
+        console.log('[taildog] getClients() returned:', clients)
         setClients(clients)
         setServerInfo(info)
-      } catch {
-        // ignore — will retry on next WS reconnect
+      } catch (err) {
+        console.error('[taildog] fetchData() failed:', err)
       }
     }
     // Pass fetchData as the onOpen callback so we re-fetch the full client/server

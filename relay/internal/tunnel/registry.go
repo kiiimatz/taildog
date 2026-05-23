@@ -68,13 +68,25 @@ func (r *Registry) AddClient(id, name, ip string) *Client {
 	return c
 }
 
-// RemoveClient marks a client offline. Tunnels are left intact for bookkeeping.
-func (r *Registry) RemoveClient(id string) {
+// RemoveClient marks a client offline and releases all its tunnels.
+// Returns the tunnels that were removed so callers can stop proxy listeners.
+func (r *Registry) RemoveClient(id string) []*Tunnel {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if c, ok := r.clients[id]; ok {
-		c.Online = false
+	c, ok := r.clients[id]
+	if !ok {
+		return nil
 	}
+	c.Online = false
+	removed := make([]*Tunnel, 0, len(c.Tunnels))
+	for _, t := range c.Tunnels {
+		t.Active = false
+		r.pool.Release(t.RemotePort)
+		delete(r.tunnels, t.ID)
+		removed = append(removed, t)
+	}
+	c.Tunnels = nil
+	return removed
 }
 
 // GetClient returns the client with the given ID.

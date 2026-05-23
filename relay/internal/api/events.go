@@ -69,6 +69,13 @@ func (h *Hub) Broadcast(eventType string, data interface{}) {
 	}
 }
 
+// Count returns the number of currently connected WebSocket clients.
+func (h *Hub) Count() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return len(h.clients)
+}
+
 func (h *Hub) add(c *wsClient) {
 	h.mu.Lock()
 	h.clients[c] = struct{}{}

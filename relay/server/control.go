@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log"
@@ -36,8 +37,11 @@ func HandleControlConn(conn net.Conn, registry *tunnel.Registry, hub *api.Hub, d
 	}
 	conn.SetDeadline(time.Now().Add(30 * time.Second)) //nolint:errcheck
 
+	// Single decoder for the entire session lifetime.
+	dec := json.NewDecoder(bufio.NewReader(conn))
+
 	var hello helloMsg
-	if err := json.NewDecoder(bufio.NewReader(conn)).Decode(&hello); err != nil {
+	if err := dec.Decode(&hello); err != nil {
 		log.Printf("control: handshake from %s: %v", remoteIP, err)
 		return
 	}
@@ -46,8 +50,8 @@ func HandleControlConn(conn net.Conn, registry *tunnel.Registry, hub *api.Hub, d
 		return
 	}
 
-	welcome := welcomeMsg{Type: "welcome", RelayVersion: "0.1.0"}
-	if err := json.NewEncoder(conn).Encode(welcome); err != nil {
+	sess := newClientSession(hello.ClientID, conn)
+	if err := sess.send(welcomeMsg{Type: "welcome", RelayVersion: "0.1.0"}); err != nil {
 		log.Printf("control: send welcome to %s: %v", remoteIP, err)
 		return
 	}
@@ -58,19 +62,56 @@ func HandleControlConn(conn net.Conn, registry *tunnel.Registry, hub *api.Hub, d
 	database.AddAuditLog("CLIENT_CONNECTED", hello.ClientID, hello.Name, remoteIP) //nolint:errcheck
 	log.Printf("control: client %s (%s) connected from %s", hello.Name, hello.ClientID, remoteIP)
 
-	buf := make([]byte, 4096)
+	sessions.set(hello.ClientID, sess)
+	defer func() {
+		sessions.del(hello.ClientID)
+		sess.closeAllExternal()
+		removed := registry.RemoveClient(hello.ClientID)
+		for _, t := range removed {
+			proxies.stop(t.ID)
+			hub.Broadcast("TUNNEL_DELETED", map[string]string{"id": t.ID})
+		}
+		hub.Broadcast("CLIENT_DISCONNECTED", map[string]string{"id": hello.ClientID})
+		database.AddAuditLog("CLIENT_DISCONNECTED", hello.ClientID, "", remoteIP) //nolint:errcheck
+		log.Printf("control: client %s (%s) disconnected", hello.Name, hello.ClientID)
+	}()
+
+	// Main read loop — decode JSON frames from daemon.
 	for {
 		conn.SetReadDeadline(time.Now().Add(2 * time.Minute)) //nolint:errcheck
-		if _, err := conn.Read(buf); err != nil {
+		var raw map[string]json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
 			if err != io.EOF {
 				log.Printf("control: client %s read: %v", hello.ClientID, err)
 			}
 			break
 		}
-	}
 
-	registry.RemoveClient(hello.ClientID)
-	hub.Broadcast("CLIENT_DISCONNECTED", map[string]string{"id": hello.ClientID})
-	database.AddAuditLog("CLIENT_DISCONNECTED", hello.ClientID, "", remoteIP) //nolint:errcheck
-	log.Printf("control: client %s (%s) disconnected", hello.Name, hello.ClientID)
+		var frameType string
+		if err := json.Unmarshal(raw["type"], &frameType); err != nil {
+			continue
+		}
+
+		switch frameType {
+		case "ping":
+			sess.send(map[string]string{"type": "pong"}) //nolint:errcheck
+
+		case "data":
+			var connID, payload string
+			json.Unmarshal(raw["connID"], &connID)   //nolint:errcheck
+			json.Unmarshal(raw["payload"], &payload) //nolint:errcheck
+			data, err := base64.StdEncoding.DecodeString(payload)
+			if err == nil {
+				sess.writeToExternal(connID, data)
+			}
+
+		case "close":
+			var connID string
+			json.Unmarshal(raw["connID"], &connID) //nolint:errcheck
+			sess.closeConn(connID, false)
+
+		// "register" frames from daemon are informational only;
+		// tunnels are managed via the REST API.
+		}
+	}
 }
