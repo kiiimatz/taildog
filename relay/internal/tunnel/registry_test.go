@@ -56,13 +56,10 @@ func TestRegistryTunnelConflict(t *testing.T) {
 		t.Fatalf("first tunnel: %v", err)
 	}
 
-	// Same remote port conflicts — auto-assigned
-	_, assigned, err := reg.AddTunnel("c2", "tcp", 3000, 10001)
-	if err != nil {
-		t.Fatalf("second tunnel (conflict): %v", err)
-	}
-	if assigned == 10001 {
-		t.Fatal("expected auto-reassigned port, got 10001")
+	// Same remote port conflicts — now returns an error
+	_, _, err = reg.AddTunnel("c2", "tcp", 3000, 10001)
+	if err == nil {
+		t.Fatal("expected error for conflicting remote port, got nil")
 	}
 }
 

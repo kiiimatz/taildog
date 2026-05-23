@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── CSS variables (light mode default) ─────────────────────────────────── */
+/* ── CSS variables (light mode) ─────────────────────────────────────────── */
 :root {
   --bg-primary:   #ffffff;
   --bg-secondary: #F5F5F3;
@@ -29,23 +29,23 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-primary:   #1c1d2a;
-    --bg-secondary: #161722;
-    --bg-tertiary:  #111219;
+    --bg-primary:   #2a2a2a;
+    --bg-secondary: #1e1e1e;
+    --bg-tertiary:  #161616;
     --bg-info:      rgba(55,138,221,0.12);
     --bg-success:   rgba(29,158,117,0.12);
 
-    --text-primary:   #e8e9f0;
-    --text-secondary: #9ca3af;
-    --text-tertiary:  #4b5563;
+    --text-primary:   #e8e8e8;
+    --text-secondary: #a0a0a0;
+    --text-tertiary:  #606060;
     --text-info:      #60a5fa;
     --text-success:   #34d399;
 
-    --border-primary:   rgba(255,255,255,0.12);
-    --border-secondary: rgba(255,255,255,0.08);
+    --border-primary:   rgba(255,255,255,0.10);
+    --border-secondary: rgba(255,255,255,0.07);
     --border-tertiary:  rgba(255,255,255,0.04);
 
-    --dot-color: rgba(255,255,255,0.12);
+    --dot-color: rgba(255,255,255,0.08);
   }
 }
 

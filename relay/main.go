@@ -173,7 +173,11 @@ func handleControlConn(
 ) {
 	defer conn.Close()
 
-	remoteIP := conn.RemoteAddr().String()
+	rawAddr := conn.RemoteAddr().String()
+	remoteIP, _, _ := net.SplitHostPort(rawAddr)
+	if remoteIP == "" {
+		remoteIP = rawAddr
+	}
 	conn.SetDeadline(time.Now().Add(30 * time.Second)) //nolint:errcheck
 
 	// ── Handshake ──────────────────────────────────────────────────────────

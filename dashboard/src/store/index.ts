@@ -43,6 +43,7 @@ export interface Toast {
 
 // ── Canvas node positions ────────────────────────────────────────────────────
 export interface CanvasClient {
+  instanceID: string  // unique per placement; same clientID can appear multiple times
   clientID: string
   posX: number
   posY: number
@@ -65,9 +66,14 @@ interface AppState {
 
   // Canvas
   canvasClients: CanvasClient[]
+  setCanvasClients: (ccs: CanvasClient[]) => void
   addCanvasClient: (cc: CanvasClient) => void
-  removeCanvasClient: (clientID: string) => void
-  updateCanvasClientPos: (clientID: string, posX: number, posY: number) => void
+  removeCanvasClient: (instanceID: string) => void
+  updateCanvasClientPos: (instanceID: string, posX: number, posY: number) => void
+
+  // Drag state
+  isDraggingCanvasNode: boolean
+  setIsDraggingCanvasNode: (v: boolean) => void
 
   // Toasts
   toasts: Toast[]
@@ -110,16 +116,20 @@ export const useAppStore = create<AppState>((set) => ({
     })),
 
   canvasClients: [],
+  setCanvasClients: (ccs) => set({ canvasClients: ccs }),
   addCanvasClient: (cc) =>
     set((s) => ({ canvasClients: [...s.canvasClients, cc] })),
-  removeCanvasClient: (clientID) =>
-    set((s) => ({ canvasClients: s.canvasClients.filter((c) => c.clientID !== clientID) })),
-  updateCanvasClientPos: (clientID, posX, posY) =>
+  removeCanvasClient: (instanceID) =>
+    set((s) => ({ canvasClients: s.canvasClients.filter((c) => c.instanceID !== instanceID) })),
+  updateCanvasClientPos: (instanceID, posX, posY) =>
     set((s) => ({
       canvasClients: s.canvasClients.map((c) =>
-        c.clientID === clientID ? { ...c, posX, posY } : c
+        c.instanceID === instanceID ? { ...c, posX, posY } : c
       ),
     })),
+
+  isDraggingCanvasNode: false,
+  setIsDraggingCanvasNode: (v) => set({ isDraggingCanvasNode: v }),
 
   toasts: [],
   addToast: (message, type = 'info') => {

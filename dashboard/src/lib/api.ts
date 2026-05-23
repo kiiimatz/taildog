@@ -10,6 +10,20 @@ export function getAccessToken() {
   return accessToken
 }
 
+const REFRESH_TOKEN_KEY = 'taildog_refresh_token'
+
+export function saveRefreshToken(token: string) {
+  localStorage.setItem(REFRESH_TOKEN_KEY, token)
+}
+
+export function loadRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+export function clearRefreshToken() {
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
 type FetchOptions = RequestInit & { skipAuth?: boolean }
 
 export async function apiFetch(path: string, options: FetchOptions = {}): Promise<Response> {
@@ -38,15 +52,18 @@ export async function apiFetch(path: string, options: FetchOptions = {}): Promis
 }
 
 export async function silentRefresh(): Promise<boolean> {
+  const refreshToken = loadRefreshToken()
+  if (!refreshToken) return false
   try {
     const res = await fetch('/api/auth/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      body: JSON.stringify({ refreshToken }),
     })
-    if (!res.ok) return false
+    if (!res.ok) { clearRefreshToken(); return false }
     const data = await res.json()
     setAccessToken(data.accessToken)
+    if (data.refreshToken) saveRefreshToken(data.refreshToken)
     scheduleRefresh(data.expiresIn)
     return true
   } catch {
@@ -88,9 +105,14 @@ export async function login(username: string, password: string) {
 }
 
 export async function logout() {
-  await apiFetch('/auth/logout', { method: 'POST' })
+  const refreshToken = loadRefreshToken()
+  await apiFetch('/auth/logout', {
+    method: 'POST',
+    body: JSON.stringify({ refreshToken: refreshToken ?? '' }),
+  })
   clearRefreshTimer()
   setAccessToken(null)
+  clearRefreshToken()
 }
 
 export async function getMe() {
@@ -149,4 +171,19 @@ export async function getAuditLog() {
   const res = await apiFetch('/admin/audit-log')
   if (!res.ok) throw new Error('Failed to fetch audit log')
   return res.json()
+}
+
+// ── Canvas persistence ──────────────────────────────────────────────────────
+
+export async function getCanvasState(): Promise<Record<string, unknown>> {
+  const res = await apiFetch('/canvas')
+  if (!res.ok) return {}
+  return res.json()
+}
+
+export async function saveCanvasState(state: Record<string, unknown>): Promise<void> {
+  await apiFetch('/canvas', {
+    method: 'PUT',
+    body: JSON.stringify(state),
+  })
 }

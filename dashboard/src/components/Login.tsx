@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff } from 'lucide-react'
-import { login, scheduleRefresh, setAccessToken, getMe } from '../lib/api'
+import { login, scheduleRefresh, setAccessToken, saveRefreshToken, getMe } from '../lib/api'
 import { useAppStore } from '../store'
 
 const LOCKOUT_MS = 10 * 60 * 1000
@@ -50,6 +50,7 @@ export default function Login() {
     try {
       const data = await login(username, password)
       setAccessToken(data.accessToken)
+      saveRefreshToken(data.refreshToken)
       scheduleRefresh(data.expiresIn)
       const me = await getMe()
       setUser(me)

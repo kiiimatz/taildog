@@ -1,5 +1,12 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
+
+function formatIP(ip: string) {
+  if (!ip) return '—'
+  const clean = ip.replace(/^\[|\]$/g, '')
+  if (clean === '::1' || clean === '127.0.0.1' || clean === 'localhost') return 'localhost'
+  return clean
+}
 
 export interface ServerNodeData extends Record<string, unknown> {
   name: string
@@ -9,64 +16,56 @@ export interface ServerNodeData extends Record<string, unknown> {
 
 function ServerNode({ data }: NodeProps) {
   const d = data as unknown as ServerNodeData
+  const [hovered, setHovered] = useState(false)
 
   return (
-    <div style={{
-      minWidth: 150,
-      background: 'var(--bg-primary)',
-      border: '1.5px solid #378ADD',
-      borderRadius: 12,
-      padding: '12px 14px',
-      cursor: 'move',
-      userSelect: 'none',
-      position: 'relative',
-    }}>
-      {/* Left handle */}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px',
+        borderRadius: 8,
+        background: 'var(--bg-primary)',
+        border: `0.5px solid ${hovered ? 'var(--border-primary)' : 'var(--border-secondary)'}`,
+        cursor: 'move',
+        userSelect: 'none',
+        position: 'relative',
+        minWidth: 140,
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <Handle
         type="target"
         position={Position.Left}
         style={{
-          width: 18, height: 18,
+          width: 10, height: 10,
           borderRadius: '50%',
-          background: '#E6F1FB',
+          background: 'var(--bg-primary)',
           border: '1.5px solid #378ADD',
           cursor: 'crosshair',
-          left: -10,
+          left: -6,
         }}
       />
 
-      {/* Label */}
-      <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
-        server
-      </div>
+      {/* Accent dot (server indicator) */}
+      <div style={{
+        width: 7, height: 7,
+        borderRadius: '50%',
+        flexShrink: 0,
+        background: '#378ADD',
+      }} />
 
-      {/* Name */}
-      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-        {d.name || 'taildog-relay'}
-      </div>
-
-      {/* IP */}
-      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>
-        {d.ip || '—'}
-      </div>
-
-      {/* Port badges */}
-      {d.ports.length > 0 && (
-        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '0.5px solid var(--border-secondary)', display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-          {d.ports.map((p) => (
-            <span key={`${p.protocol}-${p.port}`} style={{
-              fontSize: 10,
-              padding: '1px 6px',
-              borderRadius: 4,
-              background: 'var(--bg-info)',
-              color: 'var(--text-info)',
-              fontFamily: 'monospace',
-            }}>
-              :{p.port}
-            </span>
-          ))}
+      {/* Text */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {d.name || 'taildog-relay'}
         </div>
-      )}
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {formatIP(d.ip)}
+        </div>
+      </div>
     </div>
   )
 }

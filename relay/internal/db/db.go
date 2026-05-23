@@ -46,6 +46,12 @@ CREATE TABLE IF NOT EXISTS audit_log (
   detail     TEXT,
   ip_address TEXT
 );
+
+CREATE TABLE IF NOT EXISTS canvas_state (
+  id    INTEGER PRIMARY KEY CHECK (id = 1),
+  state TEXT    NOT NULL DEFAULT '{}'
+);
+INSERT OR IGNORE INTO canvas_state (id, state) VALUES (1, '{}');
 `
 
 // DB wraps an *sql.DB with domain-specific operations.
@@ -272,6 +278,22 @@ func (d *DB) AddAuditLog(eventType, actor, detail, ip string) error {
 		 VALUES (?, ?, ?, ?, ?, ?)`,
 		id, time.Now().UTC(), eventType, actor, detail, ip,
 	)
+	return err
+}
+
+// GetCanvasState returns the persisted canvas state JSON blob.
+func (d *DB) GetCanvasState() (string, error) {
+	var state string
+	err := d.conn.QueryRow(`SELECT state FROM canvas_state WHERE id = 1`).Scan(&state)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "{}", nil
+	}
+	return state, err
+}
+
+// SaveCanvasState persists the canvas state JSON blob.
+func (d *DB) SaveCanvasState(state string) error {
+	_, err := d.conn.Exec(`UPDATE canvas_state SET state = ? WHERE id = 1`, state)
 	return err
 }
 

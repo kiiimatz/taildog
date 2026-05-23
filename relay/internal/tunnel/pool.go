@@ -40,9 +40,11 @@ func (p *Pool) Allocate(requested int) (int, error) {
 			p.allocated[requested] = struct{}{}
 			return requested, nil
 		}
-		// Conflict — fall through to auto-assign
+		// Requested port is already in use — return an error so the caller can
+		// surface it clearly rather than silently reassigning.
+		return 0, fmt.Errorf("port %d is already in use", requested)
 	}
-	// requested == 0 or out-of-range or conflicting → auto-assign from pool
+	// requested == 0 or out-of-range → auto-assign from pool
 
 	// Sequential scan from p.next, wrapping once.
 	for i := 0; i < (p.max - p.min + 1); i++ {

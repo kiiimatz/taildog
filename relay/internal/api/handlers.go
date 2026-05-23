@@ -5,15 +5,20 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
+	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/kiiimatz/taildog/relay/internal/auth"
 	"github.com/kiiimatz/taildog/relay/internal/db"
 	"github.com/kiiimatz/taildog/relay/internal/tunnel"
+	"github.com/kiiimatz/taildog/relay/internal/web"
 )
 
 const relayVersion = "0.1.0"
@@ -54,6 +59,8 @@ func NewRouter(s *Server) http.Handler {
 	authed.HandleFunc("/tunnels/{id}", s.handleDeleteTunnel).Methods(http.MethodDelete, http.MethodOptions)
 
 	authed.HandleFunc("/server/info", s.handleServerInfo).Methods(http.MethodGet, http.MethodOptions)
+	authed.HandleFunc("/canvas", s.handleGetCanvas).Methods(http.MethodGet, http.MethodOptions)
+	authed.HandleFunc("/canvas", s.handleSaveCanvas).Methods(http.MethodPut, http.MethodOptions)
 
 	// Admin-only routes.
 	admin := authed.PathPrefix("/admin").Subrouter()
@@ -66,7 +73,40 @@ func NewRouter(s *Server) http.Handler {
 	// WebSocket — auth checked inside via ?token= query param.
 	authed.HandleFunc("/events", s.handleEvents).Methods(http.MethodGet)
 
+	// Serve embedded dashboard (only when built with -tags embed).
+	if web.DashboardFS != nil {
+		distFS, err := fs.Sub(web.DashboardFS, "dist")
+		if err == nil {
+			r.PathPrefix("/").Handler(spaHandler(distFS))
+		}
+	}
+
 	return r
+}
+
+// spaHandler serves a static SPA: known files are served directly;
+// unknown paths fall back to index.html for client-side routing.
+func spaHandler(fsys fs.FS) http.Handler {
+	fileServer := http.FileServer(http.FS(fsys))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+		if _, err := fs.Stat(fsys, path); err != nil {
+			// Not found → serve index.html so React Router handles the route.
+			f, err2 := fsys.Open("index.html")
+			if err2 != nil {
+				http.NotFound(w, r)
+				return
+			}
+			defer f.Close()
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			io.Copy(w, f) //nolint:errcheck
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 // ── Middleware ──────────────────────────────────────────────────────────────
@@ -77,7 +117,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		if origin == s.DashboardOrigin || s.DashboardOrigin == "*" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -356,12 +396,15 @@ func (s *Server) handleServerInfo(w http.ResponseWriter, r *http.Request) {
 			online++
 		}
 	}
-	// Parse host + IP from request
 	serverName := r.Host
-	serverIP := clientIP(r)
 	if serverName == "" {
 		serverName = "taildog-relay"
 	}
+	// Strip port from Host if present
+	if h, _, err := net.SplitHostPort(serverName); err == nil {
+		serverName = h
+	}
+	serverIP := outboundIP()
 	jsonOK(w, map[string]interface{}{
 		"version":          relayVersion,
 		"uptime":           int(time.Since(s.StartTime).Seconds()),
@@ -369,6 +412,36 @@ func (s *Server) handleServerInfo(w http.ResponseWriter, r *http.Request) {
 		"serverName":       serverName,
 		"serverIP":         serverIP,
 	})
+}
+
+// ── Canvas state handlers ────────────────────────────────────────────────────
+
+func (s *Server) handleGetCanvas(w http.ResponseWriter, r *http.Request) {
+	state, err := s.DB.GetCanvasState()
+	if err != nil {
+		jsonError(w, http.StatusInternalServerError, "failed to load canvas state")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(state)) //nolint:errcheck
+}
+
+func (s *Server) handleSaveCanvas(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20)) // 2 MB limit
+	if err != nil {
+		jsonError(w, http.StatusBadRequest, "read error")
+		return
+	}
+	var raw json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
+		jsonError(w, http.StatusBadRequest, "invalid JSON")
+		return
+	}
+	if err := s.DB.SaveCanvasState(string(body)); err != nil {
+		jsonError(w, http.StatusInternalServerError, "save failed")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ── Admin handlers ───────────────────────────────────────────────────────────
@@ -472,9 +545,40 @@ func jsonError(w http.ResponseWriter, code int, msg string) {
 
 func clientIP(r *http.Request) string {
 	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		return xff
+		return strings.SplitN(xff, ",", 2)[0]
 	}
-	return r.RemoteAddr
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
+}
+
+// outboundIP returns the preferred outbound IP of this machine.
+func outboundIP() string {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		// Fallback: first non-loopback interface IP
+		ifaces, _ := net.Interfaces()
+		for _, iface := range ifaces {
+			addrs, _ := iface.Addrs()
+			for _, addr := range addrs {
+				var ip net.IP
+				switch v := addr.(type) {
+				case *net.IPNet:
+					ip = v.IP
+				case *net.IPAddr:
+					ip = v.IP
+				}
+				if ip != nil && !ip.IsLoopback() && ip.To4() != nil {
+					return ip.String()
+				}
+			}
+		}
+		return "unknown"
+	}
+	defer conn.Close()
+	return conn.LocalAddr().(*net.UDPAddr).IP.String()
 }
 
 func sha256Token(token string) string {

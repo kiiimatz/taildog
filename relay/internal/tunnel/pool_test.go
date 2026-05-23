@@ -16,16 +16,13 @@ func TestAllocateSpecific(t *testing.T) {
 	}
 }
 
-func TestAllocateConflictAutoAssign(t *testing.T) {
+func TestAllocateConflictReturnsError(t *testing.T) {
 	p := NewPool(10000, 10010)
 	_, _ = p.Allocate(10000)
 
-	port, err := p.Allocate(10000)
-	if err != nil {
-		t.Fatalf("expected auto-assign, got: %v", err)
-	}
-	if port != 10001 {
-		t.Fatalf("expected 10001, got %d", port)
+	_, err := p.Allocate(10000)
+	if err == nil {
+		t.Fatal("expected error for conflicting port, got nil")
 	}
 }
 
