@@ -1,118 +1,146 @@
-import { MoreHorizontal } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { useAppStore } from '../store'
 
 export default function Sidebar() {
   const clients = useAppStore((s) => s.clients)
   const canvasClients = useAppStore((s) => s.canvasClients)
+  const onCanvasIDs = new Set(canvasClients.map((c) => c.clientID))
 
   function onDragStart(e: React.DragEvent, clientID: string) {
     e.dataTransfer.setData('clientID', clientID)
     e.dataTransfer.effectAllowed = 'copy'
   }
 
-  const onCanvasIDs = new Set(canvasClients.map((c) => c.clientID))
-
   return (
-    <aside
-      className="flex-shrink-0 flex flex-col"
-      style={{
-        width: 230,
-        background: '#111119',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
-      }}
-    >
+    <aside style={{
+      width: 240,
+      flexShrink: 0,
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'var(--bg-secondary)',
+      borderRight: '0.5px solid var(--border-primary)',
+    }}>
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 pt-5 pb-3"
-        style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}
-      >
-        <span
-          className="text-[10px] font-semibold uppercase tracking-widest"
-          style={{ color: '#3d3f52', letterSpacing: '0.12em' }}
-        >
+      <div style={{
+        padding: '14px 14px 10px',
+        borderBottom: '0.5px solid var(--border-primary)',
+      }}>
+        <span style={{
+          fontSize: 11,
+          fontWeight: 500,
+          color: 'var(--text-tertiary)',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+        }}>
           Connected clients
         </span>
-        <button
-          className="flex items-center justify-center rounded-md w-6 h-6 transition-colors"
-          style={{ color: '#3d3f52' }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#6b7280' }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = '#3d3f52' }}
-          title="More options"
-        >
-          <MoreHorizontal size={14} />
-        </button>
       </div>
 
       {/* Client list */}
-      <div className="flex-1 overflow-y-auto px-2 py-2">
+      <div style={{ flex: 1, overflowY: 'auto', padding: 8 }}>
         {clients.length === 0 ? (
-          <p
-            className="text-xs italic px-3 py-2"
-            style={{ color: '#3d3f52' }}
-          >
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', padding: '8px 10px', fontStyle: 'italic' }}>
             No clients connected
           </p>
         ) : (
-          <div className="space-y-0.5">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {clients.map((client) => {
-              const isOnCanvas = onCanvasIDs.has(client.id)
+              const onCanvas = onCanvasIDs.has(client.id)
               return (
-                <div
+                <ClientRow
                   key={client.id}
-                  draggable={!isOnCanvas}
-                  onDragStart={(e) => !isOnCanvas && onDragStart(e, client.id)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors"
-                  style={{
-                    cursor: isOnCanvas ? 'default' : 'grab',
-                    opacity: isOnCanvas ? 0.4 : 1,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isOnCanvas) {
-                      (e.currentTarget as HTMLDivElement).style.background = '#1c1d2a'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLDivElement).style.background = 'transparent'
-                  }}
-                  title={isOnCanvas ? 'Already on canvas' : 'Drag to canvas'}
-                >
-                  {/* Status dot */}
-                  <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
-                    style={{
-                      background: client.online ? '#22c55e' : '#3d3f52',
-                      boxShadow: client.online ? '0 0 4px #22c55e66' : 'none',
-                    }}
-                  />
-                  {/* Info */}
-                  <div className="min-w-0">
-                    <p
-                      className="text-sm font-medium truncate"
-                      style={{ color: '#e8e9f0' }}
-                    >
-                      {client.name}
-                    </p>
-                    <p className="text-xs truncate" style={{ color: '#6b7280' }}>
-                      {client.ip}
-                    </p>
-                  </div>
-                </div>
+                  name={client.name}
+                  ip={client.ip}
+                  online={client.online}
+                  dimmed={onCanvas}
+                  draggable={!onCanvas}
+                  onDragStart={(e) => !onCanvas && onDragStart(e, client.id)}
+                />
               )
             })}
           </div>
         )}
       </div>
 
-      {/* Bottom status bar */}
-      <div
-        className="px-4 py-3 flex items-center gap-2"
-        style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}
-      >
-        <span style={{ color: '#22c55e', fontSize: 14 }}>⊙</span>
-        <span className="text-xs font-medium" style={{ color: '#22c55e' }}>
+      {/* Footer status */}
+      <div style={{
+        padding: '12px 14px',
+        borderTop: '0.5px solid var(--border-primary)',
+      }}>
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: 11,
+          color: 'var(--text-success)',
+          background: 'var(--bg-success)',
+          padding: '3px 8px',
+          borderRadius: 20,
+        }}>
+          <CheckCircle2 size={12} />
           taildog up
         </span>
       </div>
     </aside>
+  )
+}
+
+function ClientRow({
+  name, ip, online, dimmed, draggable, onDragStart,
+}: {
+  name: string
+  ip: string
+  online: boolean
+  dimmed: boolean
+  draggable: boolean
+  onDragStart: (e: React.DragEvent) => void
+}) {
+  return (
+    <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      title={dimmed ? 'Already on canvas' : 'Drag to canvas'}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px',
+        borderRadius: 8,
+        border: '0.5px solid transparent',
+        cursor: draggable ? 'grab' : 'default',
+        opacity: dimmed ? 0.4 : 1,
+        transition: 'background 0.1s, border-color 0.1s',
+      }}
+      onMouseEnter={(e) => {
+        if (!dimmed) {
+          const el = e.currentTarget as HTMLDivElement
+          el.style.background = 'var(--bg-primary)'
+          el.style.borderColor = 'var(--border-secondary)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLDivElement
+        el.style.background = 'transparent'
+        el.style.borderColor = 'transparent'
+      }}
+    >
+      {/* Status dot */}
+      <div style={{
+        width: 7,
+        height: 7,
+        borderRadius: '50%',
+        flexShrink: 0,
+        background: online ? '#1D9E75' : '#888780',
+      }} />
+      {/* Text */}
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {name}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {ip}
+        </div>
+      </div>
+    </div>
   )
 }

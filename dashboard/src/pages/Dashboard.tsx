@@ -18,7 +18,7 @@ export default function Dashboard() {
         setClients(clients)
         setServerInfo(info)
       } catch {
-        // Will retry on WS reconnect
+        // retry on WS reconnect
       }
     }
     fetchData()
@@ -28,7 +28,15 @@ export default function Dashboard() {
 
   return (
     <ReactFlowProvider>
-      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* Outer frame: viewport-sized, bordered, rounded, clipped */}
+      <div style={{
+        width: '100vw',
+        height: '100vh',
+        display: 'flex',
+        border: '0.5px solid var(--border-primary)',
+        borderRadius: 12,
+        overflow: 'hidden',
+      }}>
         <Sidebar />
         <Canvas />
       </div>

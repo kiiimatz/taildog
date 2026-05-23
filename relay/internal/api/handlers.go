@@ -325,8 +325,7 @@ func (s *Server) handleCreateTunnel(w http.ResponseWriter, r *http.Request) {
 			"port="+strconv.Itoa(assigned), clientIP(r))
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	jsonOK(w, t)
+	jsonCreated(w, t)
 }
 
 func (s *Server) handleDeleteTunnel(w http.ResponseWriter, r *http.Request) {
@@ -357,11 +356,18 @@ func (s *Server) handleServerInfo(w http.ResponseWriter, r *http.Request) {
 			online++
 		}
 	}
+	// Parse host + IP from request
+	serverName := r.Host
+	serverIP := clientIP(r)
+	if serverName == "" {
+		serverName = "taildog-relay"
+	}
 	jsonOK(w, map[string]interface{}{
 		"version":          relayVersion,
-		"uptime":           time.Since(s.StartTime).Round(time.Second).String(),
+		"uptime":           int(time.Since(s.StartTime).Seconds()),
 		"connectedClients": online,
-		"serverName":       r.Host,
+		"serverName":       serverName,
+		"serverIP":         serverIP,
 	})
 }
 
@@ -449,6 +455,12 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 func jsonOK(w http.ResponseWriter, v interface{}) {
 	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(v) //nolint:errcheck
+}
+
+func jsonCreated(w http.ResponseWriter, v interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(v) //nolint:errcheck
 }
 

@@ -35,16 +35,14 @@ func (p *Pool) Allocate(requested int) (int, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if requested != 0 {
-		if !p.inRange(requested) {
-			return 0, fmt.Errorf("pool: port %d out of range [%d, %d]", requested, p.min, p.max)
-		}
+	if requested != 0 && p.inRange(requested) {
 		if _, taken := p.allocated[requested]; !taken {
 			p.allocated[requested] = struct{}{}
 			return requested, nil
 		}
 		// Conflict — fall through to auto-assign
 	}
+	// requested == 0 or out-of-range or conflicting → auto-assign from pool
 
 	// Sequential scan from p.next, wrapping once.
 	for i := 0; i < (p.max - p.min + 1); i++ {

@@ -17,28 +17,30 @@ function ClientNode({ data }: NodeProps) {
 
   return (
     <div
-      className="relative"
       style={{
-        minWidth: 200,
+        minWidth: 150,
+        background: 'var(--bg-primary)',
+        border: '0.5px solid var(--border-secondary)',
         borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.08)',
-        background: '#161622',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        padding: '12px 14px',
+        cursor: 'move',
+        userSelect: 'none',
+        position: 'relative',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Right handle — source */}
+      {/* Right handle */}
       <Handle
         type="source"
         position={Position.Right}
         style={{
-          width: 14,
-          height: 14,
+          width: 18, height: 18,
           borderRadius: '50%',
-          border: '2px solid #378ADD',
-          background: '#ffffff',
-          right: -7,
+          background: 'var(--bg-primary)',
+          border: '1.5px solid #378ADD',
+          cursor: 'crosshair',
+          right: -10,
         }}
       />
 
@@ -46,75 +48,69 @@ function ClientNode({ data }: NodeProps) {
       {hovered && (
         <button
           onClick={() => d.onRemove(d.clientID)}
-          className="absolute -top-2 -right-2 z-10 rounded-full p-0.5 transition-colors"
           style={{
-            background: '#242535',
-            border: '1px solid rgba(255,255,255,0.1)',
-            color: '#6b7280',
+            position: 'absolute',
+            top: -8, right: -8,
+            width: 18, height: 18,
+            borderRadius: '50%',
+            background: 'var(--bg-primary)',
+            border: '0.5px solid var(--border-primary)',
+            color: 'var(--text-secondary)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer',
+            zIndex: 10,
           }}
           onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = '#7f1d1d'
-            ;(e.currentTarget as HTMLButtonElement).style.color = '#fca5a5'
+            (e.currentTarget as HTMLButtonElement).style.background = '#fee2e2'
+            ;(e.currentTarget as HTMLButtonElement).style.color = '#dc2626'
           }}
           onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.background = '#242535'
-            ;(e.currentTarget as HTMLButtonElement).style.color = '#6b7280'
+            (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-primary)'
+            ;(e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'
           }}
         >
-          <X size={11} />
+          <X size={10} />
         </button>
       )}
 
-      <div className="px-4 py-3">
-        {/* Label */}
-        <p
-          className="text-[10px] font-semibold uppercase mb-1"
-          style={{ color: '#3d3f52', letterSpacing: '0.1em' }}
-        >
-          Client
-        </p>
-
-        {/* Hostname row */}
-        <div className="flex items-center gap-2 mb-0.5">
-          <div
-            className="w-2 h-2 rounded-full flex-shrink-0"
-            style={{
-              background: d.online ? '#22c55e' : '#3d3f52',
-              boxShadow: d.online ? '0 0 4px #22c55e66' : 'none',
-            }}
-          />
-          <p
-            className="font-semibold text-sm truncate"
-            style={{ color: '#e8e9f0' }}
-          >
-            {d.name}
-          </p>
-        </div>
-
-        {/* IP */}
-        <p className="text-xs mb-3 pl-4" style={{ color: '#6b7280' }}>
-          {d.ip}
-        </p>
-
-        {/* Port badges */}
-        {d.ports.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            {d.ports.map((p) => (
-              <span
-                key={`${p.protocol}-${p.port}`}
-                className="rounded-md px-2 py-0.5 text-[10px] font-mono"
-                style={{
-                  background: '#1e1f2e',
-                  color: '#9ca3af',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                }}
-              >
-                :{p.port}
-              </span>
-            ))}
-          </div>
-        )}
+      {/* Label */}
+      <div style={{ fontSize: 10, fontWeight: 500, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>
+        client
       </div>
+
+      {/* Name + status dot */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+        <div style={{
+          width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+          background: d.online ? '#1D9E75' : '#888780',
+        }} />
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {d.name}
+        </div>
+      </div>
+
+      {/* IP */}
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1, paddingLeft: 12 }}>
+        {d.ip}
+      </div>
+
+      {/* Port badges */}
+      {d.ports.length > 0 && (
+        <div style={{ marginTop: 6, paddingTop: 6, borderTop: '0.5px solid var(--border-secondary)', display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          {d.ports.map((p) => (
+            <span key={`${p.protocol}-${p.port}`} style={{
+              fontSize: 10,
+              padding: '1px 6px',
+              borderRadius: 4,
+              background: 'var(--bg-info)',
+              color: 'var(--text-info)',
+              fontFamily: 'monospace',
+            }}>
+              :{p.port}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

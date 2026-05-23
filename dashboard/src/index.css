@@ -2,12 +2,60 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── CSS variables (light mode default) ─────────────────────────────────── */
+:root {
+  --bg-primary:   #ffffff;
+  --bg-secondary: #F5F5F3;
+  --bg-tertiary:  #EFEFED;
+  --bg-info:      rgba(55,138,221,0.08);
+  --bg-success:   rgba(29,158,117,0.10);
+
+  --text-primary:   #1a1a1a;
+  --text-secondary: #666666;
+  --text-tertiary:  #999999;
+  --text-info:      #185FA5;
+  --text-success:   #1D9E75;
+
+  --border-primary:   rgba(0,0,0,0.15);
+  --border-secondary: rgba(0,0,0,0.10);
+  --border-tertiary:  rgba(0,0,0,0.06);
+
+  --dot-color: rgba(0,0,0,0.15);
+
+  --accent:      #378ADD;
+  --accent-dark: #185FA5;
+  --success:     #1D9E75;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-primary:   #1c1d2a;
+    --bg-secondary: #161722;
+    --bg-tertiary:  #111219;
+    --bg-info:      rgba(55,138,221,0.12);
+    --bg-success:   rgba(29,158,117,0.12);
+
+    --text-primary:   #e8e9f0;
+    --text-secondary: #9ca3af;
+    --text-tertiary:  #4b5563;
+    --text-info:      #60a5fa;
+    --text-success:   #34d399;
+
+    --border-primary:   rgba(255,255,255,0.12);
+    --border-secondary: rgba(255,255,255,0.08);
+    --border-tertiary:  rgba(255,255,255,0.04);
+
+    --dot-color: rgba(255,255,255,0.12);
+  }
+}
+
+/* ── Base ────────────────────────────────────────────────────────────────── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: #0c0d14;
-  color: #e8e9f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   height: 100vh;
   overflow: hidden;
 }
@@ -17,17 +65,27 @@ body {
   height: 100vh;
 }
 
-/* React Flow overrides */
-.react-flow__background { background: #0c0d14; }
+/* ── React Flow ──────────────────────────────────────────────────────────── */
+.react-flow__background { background: var(--bg-tertiary); }
 .react-flow__pane { cursor: default; }
-.react-flow__node { cursor: default; }
+
+/* Dot grid color — override the SVG pattern fill */
+.react-flow__background pattern circle {
+  fill: var(--dot-color);
+}
 
 .react-flow__edge-path {
-  stroke: #378ADD;
+  stroke: var(--accent);
   stroke-width: 1.5;
 }
 
-/* Scrollbar */
+.react-flow__edge-text { font-size: 9px; }
+.react-flow__edge-textbg { fill: var(--bg-tertiary); }
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-primary);
+  border-radius: 2px;
+}

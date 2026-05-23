@@ -1,4 +1,7 @@
 import { useState } from 'react'
+import { Settings2 } from 'lucide-react'
+
+const PROTOCOLS = ['tcp', 'udp', 'http', 'https', 'socks5', 'quic', 'ws', 'scp', 'smtp']
 
 interface Props {
   clientID: string
@@ -7,6 +10,7 @@ interface Props {
 }
 
 export default function TunnelConfigModal({ onConfirm, onCancel }: Props) {
+  const [protocol, setProtocol] = useState('tcp')
   const [localPort, setLocalPort] = useState('')
   const [remotePort, setRemotePort] = useState('')
 
@@ -14,131 +18,133 @@ export default function TunnelConfigModal({ onConfirm, onCancel }: Props) {
     const lp = parseInt(localPort, 10)
     const rp = remotePort ? parseInt(remotePort, 10) : lp
     if (!lp || lp < 1 || lp > 65535) return
-    onConfirm('tcp', lp, rp)
+    onConfirm(protocol, lp, rp)
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    fontSize: 12,
+    padding: '5px 8px',
+    border: '0.5px solid var(--border-secondary)',
+    borderRadius: 8,
+    background: 'var(--bg-secondary)',
+    color: 'var(--text-primary)',
+    outline: 'none',
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.65)' }}
-    >
-      <div
-        className="w-[400px] rounded-2xl"
-        style={{
-          background: '#1a1b28',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-        }}
-      >
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 50,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'rgba(0,0,0,0.18)',
+    }}>
+      <div style={{
+        width: 240,
+        background: 'var(--bg-primary)',
+        border: '0.5px solid var(--border-secondary)',
+        borderRadius: 12,
+        padding: '18px 20px',
+      }}>
         {/* Header */}
-        <div className="flex items-center gap-3 px-6 pt-6 pb-5">
-          <span style={{ color: '#378ADD', fontSize: 18, lineHeight: 1 }}>⊙</span>
-          <h2 className="font-semibold text-base" style={{ color: '#e8e9f0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14 }}>
+          <Settings2 size={14} color="#378ADD" />
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
             Tunnel config
-          </h2>
+          </span>
         </div>
 
-        {/* Body */}
-        <div className="px-6 pb-5 space-y-5">
-          {/* Client port */}
-          <div>
-            <label
-              className="block text-sm font-medium mb-2"
-              style={{ color: '#e8e9f0' }}
-            >
-              Client port
-            </label>
-            <input
-              type="number"
-              value={localPort}
-              onChange={(e) => setLocalPort(e.target.value)}
-              placeholder="3000"
-              min={1}
-              max={65535}
-              className="w-full rounded-lg px-4 py-3 text-base focus:outline-none"
-              style={{
-                background: '#0f1018',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: '#e8e9f0',
-              }}
-              onFocus={(e) => {
-                (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(55,138,221,0.5)'
-              }}
-              onBlur={(e) => {
-                (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.08)'
-              }}
-            />
-          </div>
-
-          {/* Server port */}
-          <div>
-            <label
-              className="block text-sm font-medium mb-2"
-              style={{ color: '#e8e9f0' }}
-            >
-              Server port{' '}
-              <span style={{ color: '#6b7280', fontWeight: 400 }}>(optional)</span>
-            </label>
-            <input
-              type="number"
-              value={remotePort}
-              onChange={(e) => setRemotePort(e.target.value)}
-              placeholder={localPort || '2000'}
-              min={1}
-              max={65535}
-              className="w-full rounded-lg px-4 py-3 text-base focus:outline-none"
-              style={{
-                background: '#0f1018',
-                border: '1px solid rgba(255,255,255,0.08)',
-                color: '#e8e9f0',
-              }}
-              onFocus={(e) => {
-                (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(55,138,221,0.5)'
-              }}
-              onBlur={(e) => {
-                (e.currentTarget as HTMLInputElement).style.borderColor = 'rgba(255,255,255,0.08)'
-              }}
-            />
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: '#6b7280' }}>
-              未入力の場合、サーバーポートはクライアントポートと同じになります。ポート衝突時は自動で別ポートが割り当てられます。
-            </p>
-          </div>
+        {/* Protocol */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            Protocol
+          </label>
+          <select
+            value={protocol}
+            onChange={(e) => setProtocol(e.target.value)}
+            style={inputStyle}
+          >
+            {PROTOCOLS.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-3 px-6 pb-6">
+        {/* Client port */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            Client port
+          </label>
+          <input
+            type="number"
+            value={localPort}
+            onChange={(e) => setLocalPort(e.target.value)}
+            placeholder="3000"
+            min={1}
+            max={65535}
+            style={inputStyle}
+            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = '#378ADD' }}
+            onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--border-secondary)' }}
+          />
+        </div>
+
+        {/* Server port */}
+        <div style={{ marginBottom: 10 }}>
+          <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            Server port{' '}
+            <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>(optional)</span>
+          </label>
+          <input
+            type="number"
+            value={remotePort}
+            onChange={(e) => setRemotePort(e.target.value)}
+            placeholder="same as client port"
+            min={1}
+            max={65535}
+            style={inputStyle}
+            onFocus={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = '#378ADD' }}
+            onBlur={(e) => { (e.currentTarget as HTMLInputElement).style.borderColor = 'var(--border-secondary)' }}
+          />
+        </div>
+
+        {/* Hint */}
+        <p style={{ fontSize: 10, color: 'var(--text-tertiary)', lineHeight: 1.5, marginBottom: 12 }}>
+          未入力の場合、サーバーポートはクライアントポートと同じになります。ポート衝突時は自動で別ポートが割り当てられます。
+        </p>
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
           <button
             onClick={onCancel}
-            className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors"
             style={{
-              background: '#242535',
-              color: '#e8e9f0',
-              border: '1px solid rgba(255,255,255,0.07)',
+              fontSize: 11, padding: '5px 12px',
+              borderRadius: 8,
+              border: '0.5px solid var(--border-secondary)',
+              background: 'transparent',
+              color: 'var(--text-primary)',
+              cursor: 'pointer',
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = '#2e2f42'
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = '#242535'
-            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-secondary)' }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent' }}
           >
             Cancel
           </button>
           <button
             onClick={handleConnect}
             disabled={!localPort}
-            className="flex-1 rounded-xl py-2.5 text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             style={{
-              background: '#e8e9f0',
-              color: '#0c0d14',
+              fontSize: 11, padding: '5px 12px',
+              borderRadius: 8,
+              border: '0.5px solid #185FA5',
+              background: '#185FA5',
+              color: '#ffffff',
+              cursor: localPort ? 'pointer' : 'not-allowed',
+              opacity: localPort ? 1 : 0.4,
             }}
             onMouseEnter={(e) => {
-              if (localPort) {
-                (e.currentTarget as HTMLButtonElement).style.background = '#ffffff'
-              }
+              if (localPort) (e.currentTarget as HTMLButtonElement).style.background = '#1a6bbf'
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.background = '#e8e9f0'
+              (e.currentTarget as HTMLButtonElement).style.background = '#185FA5'
             }}
           >
             Connect

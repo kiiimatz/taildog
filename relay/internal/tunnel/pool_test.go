@@ -75,14 +75,14 @@ func TestRelease(t *testing.T) {
 	}
 }
 
-func TestOutOfRange(t *testing.T) {
+func TestOutOfRangeAutoAssigns(t *testing.T) {
+	// Requesting an out-of-range port falls through to auto-assign from the pool.
 	p := NewPool(10000, 10010)
-	_, err := p.Allocate(9999)
-	if err == nil {
-		t.Fatal("expected error for out-of-range port")
+	port, err := p.Allocate(3000) // 3000 is outside [10000, 10010]
+	if err != nil {
+		t.Fatalf("expected auto-assign for out-of-range port, got: %v", err)
 	}
-	_, err = p.Allocate(10011)
-	if err == nil {
-		t.Fatal("expected error for out-of-range port")
+	if port < 10000 || port > 10010 {
+		t.Fatalf("expected auto-assigned port in range, got %d", port)
 	}
 }

@@ -8,21 +8,28 @@ export default function Toasts() {
   if (!toasts.length) return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+    <div style={{
+      position: 'fixed', bottom: 16, right: 16, zIndex: 100,
+      display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
       {toasts.map((t) => (
-        <div
-          key={t.id}
-          className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm shadow-lg max-w-sm ${
-            t.type === 'error'
-              ? 'bg-red-950 border-red-700 text-red-200'
-              : t.type === 'success'
-              ? 'bg-green-950 border-green-700 text-green-200'
-              : 'bg-gray-900 border-gray-700 text-gray-200'
-          }`}
-        >
-          <span className="flex-1">{t.message}</span>
-          <button onClick={() => removeToast(t.id)} className="text-current opacity-60 hover:opacity-100">
-            <X size={14} />
+        <div key={t.id} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 12px',
+          borderRadius: 8,
+          border: '0.5px solid var(--border-primary)',
+          background: 'var(--bg-primary)',
+          fontSize: 12,
+          color: t.type === 'error' ? '#dc2626' : t.type === 'success' ? '#1D9E75' : 'var(--text-primary)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+          maxWidth: 320,
+        }}>
+          <span style={{ flex: 1 }}>{t.message}</span>
+          <button
+            onClick={() => removeToast(t.id)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', display: 'flex' }}
+          >
+            <X size={12} />
           </button>
         </div>
       ))}

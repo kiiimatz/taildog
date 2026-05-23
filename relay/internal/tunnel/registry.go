@@ -10,23 +10,23 @@ import (
 
 // Tunnel describes a single forwarding rule on the relay.
 type Tunnel struct {
-	ID         string
-	ClientID   string
-	Protocol   string
-	LocalPort  int
-	RemotePort int
-	CreatedAt  time.Time
-	Active     bool
+	ID         string    `json:"id"`
+	ClientID   string    `json:"clientID"`
+	Protocol   string    `json:"protocol"`
+	LocalPort  int       `json:"localPort"`
+	RemotePort int       `json:"remotePort"`
+	CreatedAt  time.Time `json:"createdAt"`
+	Active     bool      `json:"active"`
 }
 
 // Client represents a connected daemon.
 type Client struct {
-	ID          string
-	Name        string
-	IP          string
-	ConnectedAt time.Time
-	Online      bool
-	Tunnels     []*Tunnel
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	IP          string    `json:"ip"`
+	ConnectedAt time.Time `json:"connectedAt"`
+	Online      bool      `json:"online"`
+	Tunnels     []*Tunnel `json:"tunnels"`
 }
 
 // Registry is the in-memory store of clients and their tunnels.
