@@ -18,11 +18,13 @@ export default function Dashboard() {
         setClients(clients)
         setServerInfo(info)
       } catch {
-        // retry on WS reconnect
+        // ignore — will retry on next WS reconnect
       }
     }
-    fetchData()
-    connectEvents()
+    // Pass fetchData as the onOpen callback so we re-fetch the full client/server
+    // list every time the WebSocket (re)connects.  This guarantees we never show
+    // stale data when a CLIENT_CONNECTED event fired before the socket was ready.
+    connectEvents(fetchData)
     return () => disconnectEvents()
   }, [])
 

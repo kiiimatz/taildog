@@ -60,6 +60,7 @@ interface AppState {
   setClients: (clients: ClientInfo[]) => void
   setServerInfo: (info: ServerInfo) => void
   upsertClient: (client: ClientInfo) => void
+  setClientOnline: (id: string, online: boolean) => void
   removeClient: (id: string) => void
   addTunnel: (clientID: string, tunnel: TunnelInfo) => void
   removeTunnel: (tunnelID: string) => void
@@ -99,6 +100,10 @@ export const useAppStore = create<AppState>((set) => ({
       }
       return { clients: [...s.clients, client] }
     }),
+  setClientOnline: (id, online) =>
+    set((s) => ({
+      clients: s.clients.map((c) => c.id === id ? { ...c, online } : c),
+    })),
   removeClient: (id) =>
     set((s) => ({ clients: s.clients.filter((c) => c.id !== id) })),
   addTunnel: (clientID, tunnel) =>

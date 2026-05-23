@@ -4,8 +4,11 @@ import { useAppStore } from '../store'
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let onOpenCallback: (() => void) | undefined
 
-export function connectEvents() {
+export function connectEvents(onOpen?: () => void) {
+  if (onOpen !== undefined) onOpenCallback = onOpen
+
   const token = getAccessToken()
   if (!token) return
 
@@ -13,6 +16,12 @@ export function connectEvents() {
   const url = `${protocol}://${window.location.host}/api/events?token=${encodeURIComponent(token)}`
 
   ws = new WebSocket(url)
+
+  ws.onopen = () => {
+    // Re-fetch data on every (re)connect so we never miss events that fired
+    // while the WebSocket was down.
+    onOpenCallback?.()
+  }
 
   ws.onmessage = (ev) => {
     try {
@@ -23,7 +32,8 @@ export function connectEvents() {
           store.upsertClient({ ...data, online: true })
           break
         case 'CLIENT_DISCONNECTED':
-          store.upsertClient({ ...data, online: false })
+          // Only flip the online flag — keep the existing client data intact.
+          store.setClientOnline(data.id, false)
           break
         case 'TUNNEL_CREATED':
           store.addTunnel(data.clientID, data)
@@ -38,7 +48,7 @@ export function connectEvents() {
   }
 
   ws.onclose = () => {
-    reconnectTimer = setTimeout(connectEvents, 3000)
+    reconnectTimer = setTimeout(() => connectEvents(), 3000)
   }
   ws.onerror = () => {
     ws?.close()
