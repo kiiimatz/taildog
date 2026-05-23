@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0f1117;
+  color: #e5e7eb;
+}
+
+#root {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* React Flow overrides */
+.react-flow__background {
+  background: #0f1117;
+}
+
+.react-flow__edge-path {
+  stroke: #378ADD;
+  stroke-width: 2;
+}
+
+/* Dot grid canvas background */
+.canvas-bg {
+  background-color: #0f1117;
+  background-image: radial-gradient(circle, #2d3044 1px, transparent 1px);
+  background-size: 24px 24px;
+}

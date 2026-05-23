@@ -1,0 +1,28 @@
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+relay/taildog-relay
+client/taildog
+relay/data/
+vendor/
+
+# Node / Dashboard
+node_modules/
+dist/
+.env
+.env.local
+
+# Certs / secrets
+*.pem
+*.key
+*.crt
+.secret
+
+# OS
+.DS_Store
+Thumbs.db
