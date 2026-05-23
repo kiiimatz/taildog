@@ -43,6 +43,7 @@ func buildRoot() *cobra.Command {
 		cmdRemove(),
 		cmdLogs(),
 		cmdVersion(),
+		cmdServer(),
 	)
 	return root
 }

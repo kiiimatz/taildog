@@ -1,0 +1,147 @@
+// Package server exposes the taildog relay as a callable library so that
+// other binaries (e.g. the combined taildog CLI) can embed it.
+package server
+
+import (
+	"context"
+	"crypto/tls"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/kiiimatz/taildog/relay/internal/api"
+	"github.com/kiiimatz/taildog/relay/internal/auth"
+	"github.com/kiiimatz/taildog/relay/internal/db"
+	internaltls "github.com/kiiimatz/taildog/relay/internal/tls"
+	"github.com/kiiimatz/taildog/relay/internal/tunnel"
+)
+
+// Config holds all configuration for the relay server.
+type Config struct {
+	DataDir         string
+	ControlPort     int
+	APIPort         int
+	APIHost         string
+	DashboardOrigin string
+	Version         string
+}
+
+// DefaultConfig returns sensible defaults.
+func DefaultConfig() Config {
+	return Config{
+		DataDir:         "./data",
+		ControlPort:     7700,
+		APIPort:         7701,
+		APIHost:         "0.0.0.0",
+		DashboardOrigin: "http://localhost:5173",
+		Version:         "0.1.0",
+	}
+}
+
+// Run starts the relay server and blocks until SIGINT/SIGTERM.
+func Run(cfg Config) error {
+	// ── Database ──────────────────────────────────────────────────────────
+	if err := os.MkdirAll(cfg.DataDir, 0o700); err != nil {
+		return fmt.Errorf("mkdir data: %w", err)
+	}
+	database, err := db.New(cfg.DataDir + "/relay.db")
+	if err != nil {
+		return fmt.Errorf("open db: %w", err)
+	}
+	defer database.Close()
+
+	// ── First-run wizard ──────────────────────────────────────────────────
+	firstRun, err := database.IsFirstRun()
+	if err != nil {
+		return fmt.Errorf("first-run check: %w", err)
+	}
+	if firstRun {
+		if err := auth.RunWizard(database); err != nil {
+			return fmt.Errorf("wizard: %w", err)
+		}
+	}
+
+	// ── TLS ───────────────────────────────────────────────────────────────
+	certFile, keyFile, err := internaltls.EnsureCerts(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("tls: %w", err)
+	}
+	tlsCert, err := tls.LoadX509KeyPair(certFile, keyFile)
+	if err != nil {
+		return fmt.Errorf("load certs: %w", err)
+	}
+	tlsCfg := &tls.Config{Certificates: []tls.Certificate{tlsCert}, MinVersion: tls.VersionTLS12}
+
+	// ── JWT secret ────────────────────────────────────────────────────────
+	if err := auth.LoadSecret(cfg.DataDir); err != nil {
+		return fmt.Errorf("jwt secret: %w", err)
+	}
+
+	// ── Tunnel infrastructure ─────────────────────────────────────────────
+	pool := tunnel.NewPool(10000, 60000)
+	registry := tunnel.NewRegistry(pool)
+	hub := api.NewHub()
+
+	// ── REST API + embedded dashboard ─────────────────────────────────────
+	srv := &api.Server{
+		DB:              database,
+		Registry:        registry,
+		Hub:             hub,
+		DashboardOrigin: cfg.DashboardOrigin,
+		StartTime:       time.Now(),
+	}
+	apiAddr := fmt.Sprintf("%s:%d", cfg.APIHost, cfg.APIPort)
+	apiListener, err := tls.Listen("tcp", apiAddr, tlsCfg)
+	if err != nil {
+		return fmt.Errorf("api listen %s: %w", apiAddr, err)
+	}
+	httpServer := &http.Server{
+		Handler:      api.NewRouter(srv),
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+		IdleTimeout:  120 * time.Second,
+	}
+	go func() {
+		if err := httpServer.Serve(apiListener); err != nil && err != http.ErrServerClosed {
+			log.Printf("api: %v", err)
+		}
+	}()
+
+	// ── Control server ────────────────────────────────────────────────────
+	controlAddr := fmt.Sprintf("0.0.0.0:%d", cfg.ControlPort)
+	controlListener, err := tls.Listen("tcp", controlAddr, tlsCfg)
+	if err != nil {
+		return fmt.Errorf("control listen %s: %w", controlAddr, err)
+	}
+	go AcceptControlConnections(controlListener, registry, hub, database)
+
+	log.Printf("taildog relay  control :%d  api+dashboard :%d", cfg.ControlPort, cfg.APIPort)
+
+	// ── Graceful shutdown ─────────────────────────────────────────────────
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Println("shutting down…")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	httpServer.Shutdown(ctx) //nolint:errcheck
+	controlListener.Close()  //nolint:errcheck
+	log.Println("bye.")
+	return nil
+}
+
+// AcceptControlConnections loops accepting client daemon connections.
+func AcceptControlConnections(ln net.Listener, registry *tunnel.Registry, hub *api.Hub, database *db.DB) {
+	for {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		go HandleControlConn(conn, registry, hub, database)
+	}
+}
