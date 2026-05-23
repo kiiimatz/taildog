@@ -231,6 +231,13 @@ export default function Canvas() {
           setEdges(restoredEdges)
         }
       }
+      // Restore server node position if saved
+      if (saved.serverPos) {
+        const sp = saved.serverPos as { x: number; y: number }
+        setNodes((nds) => nds.map((n) =>
+          n.id === 'server' ? { ...n, position: { x: sp.x, y: sp.y } } : n
+        ))
+      }
       // Allow saves only after load is complete
       canSaveRef.current = true
       // Fit all nodes into view after restoration
@@ -259,7 +266,9 @@ export default function Canvas() {
         posX: node?.position.x ?? cc.posX, posY: node?.position.y ?? cc.posY }
     })
     const savedEdges = getEdges().map((e) => ({ id: e.id, source: e.source, target: e.target }))
-    return { canvasClients: savedCanvasClients, tunnelNodes, edges: savedEdges }
+    const serverNode = currentNodes.find((n) => n.id === 'server')
+    const serverPos = serverNode ? { x: serverNode.position.x, y: serverNode.position.y } : undefined
+    return { canvasClients: savedCanvasClients, tunnelNodes, edges: savedEdges, serverPos }
   }
 
   const saveNow = useCallback(() => {

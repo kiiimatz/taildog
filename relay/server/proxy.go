@@ -49,7 +49,7 @@ type proxyStore struct {
 // proxies is the global tunnel proxy registry.
 var proxies = &proxyStore{data: make(map[string]net.Listener)}
 
-func (p *proxyStore) start(remotePort int, tunnelID, clientID string) error {
+func (p *proxyStore) start(remotePort int, tunnelID, clientID string, localPort int) error {
 	addr := fmt.Sprintf(":%d", remotePort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -65,10 +65,10 @@ func (p *proxyStore) start(remotePort int, tunnelID, clientID string) error {
 			if err != nil {
 				return
 			}
-			go handleProxyConn(conn, tunnelID, clientID)
+			go handleProxyConn(conn, tunnelID, clientID, localPort)
 		}
 	}()
-	log.Printf("proxy: listening on :%d for tunnel %s", remotePort, tunnelID)
+	log.Printf("proxy: listening on :%d for tunnel %s (local:%d)", remotePort, tunnelID, localPort)
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (p *proxyStore) stop(tunnelID string) {
 	}
 }
 
-func handleProxyConn(extConn net.Conn, tunnelID, clientID string) {
+func handleProxyConn(extConn net.Conn, tunnelID, clientID string, localPort int) {
 	defer extConn.Close()
 
 	sess, ok := sessions.get(clientID)
@@ -92,7 +92,7 @@ func handleProxyConn(extConn net.Conn, tunnelID, clientID string) {
 		return
 	}
 
-	connID, err := sess.openConn(tunnelID, extConn)
+	connID, err := sess.openConn(tunnelID, extConn, localPort)
 	if err != nil {
 		log.Printf("proxy: open conn: %v", err)
 		return

@@ -33,7 +33,7 @@ type Server struct {
 	Hub              *Hub
 	DashboardOrigin  string
 	StartTime        time.Time
-	StartTunnelProxy func(remotePort int, tunnelID, clientID string) error
+	StartTunnelProxy func(remotePort int, tunnelID, clientID string, localPort int) error
 	StopTunnelProxy  func(tunnelID string)
 }
 
@@ -365,7 +365,7 @@ func (s *Server) handleCreateTunnel(w http.ResponseWriter, r *http.Request) {
 
 	s.Hub.Broadcast("TUNNEL_CREATED", t)
 	if s.StartTunnelProxy != nil {
-		if err := s.StartTunnelProxy(assigned, t.ID, body.ClientID); err != nil {
+		if err := s.StartTunnelProxy(assigned, t.ID, body.ClientID, body.LocalPort); err != nil {
 			log.Printf("tunnel proxy start: %v", err)
 		}
 	}

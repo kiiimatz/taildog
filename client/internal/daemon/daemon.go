@@ -290,15 +290,18 @@ func Connect(cfg *config.Config) error {
 
 			case "open":
 				var tunnelID, connID string
-				json.Unmarshal(raw["tunnelID"], &tunnelID) //nolint:errcheck
-				json.Unmarshal(raw["connID"], &connID)    //nolint:errcheck
+				var localPort int
+				json.Unmarshal(raw["tunnelID"], &tunnelID)  //nolint:errcheck
+				json.Unmarshal(raw["connID"], &connID)      //nolint:errcheck
+				json.Unmarshal(raw["localPort"], &localPort) //nolint:errcheck
 
-				// Find local port for this tunnel ID.
-				localPort := 0
-				for _, t := range cfg.Tunnels {
-					if t.ID == tunnelID {
-						localPort = t.LocalPort
-						break
+				// Fall back to config lookup if relay didn't send localPort.
+				if localPort == 0 {
+					for _, t := range cfg.Tunnels {
+						if t.ID == tunnelID {
+							localPort = t.LocalPort
+							break
+						}
 					}
 				}
 				if localPort == 0 {

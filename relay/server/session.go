@@ -32,9 +32,9 @@ func (s *clientSession) send(v interface{}) error {
 }
 
 // openConn sends an "open" frame to the daemon and registers the external conn.
-func (s *clientSession) openConn(tunnelID string, extConn net.Conn) (string, error) {
+func (s *clientSession) openConn(tunnelID string, extConn net.Conn, localPort int) (string, error) {
 	connID := uuid.New().String()
-	err := s.send(map[string]string{"type": "open", "tunnelID": tunnelID, "connID": connID})
+	err := s.send(map[string]interface{}{"type": "open", "tunnelID": tunnelID, "connID": connID, "localPort": localPort})
 	if err != nil {
 		return "", err
 	}
