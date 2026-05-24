@@ -305,9 +305,10 @@ func Connect(cfg *config.Config) error {
 			case "open":
 				var tunnelID, connID string
 				var localPort int
-				json.Unmarshal(raw["tunnelID"], &tunnelID)  //nolint:errcheck
-				json.Unmarshal(raw["connID"], &connID)      //nolint:errcheck
+				json.Unmarshal(raw["tunnelID"], &tunnelID)   //nolint:errcheck
+				json.Unmarshal(raw["connID"], &connID)       //nolint:errcheck
 				json.Unmarshal(raw["localPort"], &localPort) //nolint:errcheck
+				log.Printf("open frame: tunnelID=%s connID=%s localPort=%d", tunnelID, connID, localPort)
 
 				// Fall back to config lookup if relay didn't send localPort.
 				if localPort == 0 {
@@ -319,14 +320,14 @@ func Connect(cfg *config.Config) error {
 					}
 				}
 				if localPort == 0 {
-					log.Printf("open: unknown tunnel %s", tunnelID)
+					log.Printf("open: localPort unknown for tunnel %s — sending close", tunnelID)
 					safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck
 					continue
 				}
 
 				localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
 				if err != nil {
-					log.Printf("open: dial local:%d: %v", localPort, err)
+					log.Printf("open: dial 127.0.0.1:%d failed: %v", localPort, err)
 					safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck
 					continue
 				}
@@ -334,7 +335,7 @@ func Connect(cfg *config.Config) error {
 				localMu.Lock()
 				localConns[connID] = localConn
 				localMu.Unlock()
-				log.Printf("tunnel open: connID=%s → local:%d", connID, localPort)
+				log.Printf("open: connected 127.0.0.1:%d connID=%s", localPort, connID)
 
 				// Read from local connection, send data frames to relay.
 				go func(connID string, localConn net.Conn) {

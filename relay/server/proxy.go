@@ -111,18 +111,21 @@ func (p *proxyStore) stopAll() {
 
 func handleProxyConn(extConn net.Conn, tunnelID, clientID string, localPort int) {
 	defer extConn.Close()
+	log.Printf("proxy: new conn from %s → tunnel %s clientID %s local:%d", extConn.RemoteAddr(), tunnelID, clientID, localPort)
 
 	sess, ok := sessions.get(clientID)
 	if !ok {
-		log.Printf("proxy: no session for client %s", clientID)
+		log.Printf("proxy: no session for client %s — daemon not connected?", clientID)
 		return
 	}
+	log.Printf("proxy: session found for client %s, sending open frame", clientID)
 
 	connID, err := sess.openConn(tunnelID, extConn, localPort)
 	if err != nil {
-		log.Printf("proxy: open conn: %v", err)
+		log.Printf("proxy: openConn failed: %v", err)
 		return
 	}
+	log.Printf("proxy: open frame sent, connID=%s", connID)
 	defer sess.closeConn(connID, true)
 
 	// Read from external connection, send data frames to daemon.
