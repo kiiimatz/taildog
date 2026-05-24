@@ -82,6 +82,15 @@ func Run(cfg Config) error {
 		return fmt.Errorf("jwt secret: %w", err)
 	}
 
+	// ── UFW (Linux only) ──────────────────────────────────────────────────
+	ufwAllow(cfg.ControlPort, "tcp")
+	ufwAllow(cfg.APIPort, "tcp")
+	defer func() {
+		ufwDelete(cfg.ControlPort, "tcp")
+		ufwDelete(cfg.APIPort, "tcp")
+		proxies.stopAll() // also removes UFW rules for all tunnel remote ports
+	}()
+
 	// ── Tunnel infrastructure ─────────────────────────────────────────────
 	pool := tunnel.NewPool(10000, 60000)
 	registry := tunnel.NewRegistry(pool)

@@ -105,6 +105,10 @@ func Start() error {
 	}
 	logFile.Close()
 
+	// On Linux, prime the sudo password cache so the detached daemon can
+	// run ufw commands without prompting (sudo caches credentials for ~15 min).
+	ufwPrimeSudo()
+
 	// Give the child a moment to write its PID file.
 	time.Sleep(200 * time.Millisecond)
 
@@ -146,6 +150,16 @@ func RunForeground() error {
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
 	}
+
+	// UFW: open local service ports for any pre-configured tunnels (Linux only).
+	for _, t := range cfg.Tunnels {
+		ufwAllow(t.LocalPort, t.Protocol)
+	}
+	defer func() {
+		for _, t := range cfg.Tunnels {
+			ufwDelete(t.LocalPort, t.Protocol)
+		}
+	}()
 
 	return connectWithBackoff(cfg)
 }

@@ -40,14 +40,20 @@ func (s *sessionStore) get(clientID string) (*clientSession, bool) {
 // sessions is the global per-binary daemon session registry.
 var sessions = newSessionStore()
 
+// proxyEntry holds a tunnel's TCP listener and its remote port number.
+type proxyEntry struct {
+	ln         net.Listener
+	remotePort int
+}
+
 // proxyStore manages tunnel TCP listeners.
 type proxyStore struct {
 	mu   sync.Mutex
-	data map[string]net.Listener // tunnelID → listener
+	data map[string]proxyEntry // tunnelID → entry
 }
 
 // proxies is the global tunnel proxy registry.
-var proxies = &proxyStore{data: make(map[string]net.Listener)}
+var proxies = &proxyStore{data: make(map[string]proxyEntry)}
 
 func (p *proxyStore) start(remotePort int, tunnelID, clientID string, localPort int) error {
 	addr := fmt.Sprintf(":%d", remotePort)
@@ -56,8 +62,10 @@ func (p *proxyStore) start(remotePort int, tunnelID, clientID string, localPort 
 		return fmt.Errorf("proxy: listen %s: %w", addr, err)
 	}
 	p.mu.Lock()
-	p.data[tunnelID] = ln
+	p.data[tunnelID] = proxyEntry{ln: ln, remotePort: remotePort}
 	p.mu.Unlock()
+
+	ufwAllow(remotePort, "tcp")
 
 	go func() {
 		for {
@@ -74,12 +82,30 @@ func (p *proxyStore) start(remotePort int, tunnelID, clientID string, localPort 
 
 func (p *proxyStore) stop(tunnelID string) {
 	p.mu.Lock()
-	ln, ok := p.data[tunnelID]
+	entry, ok := p.data[tunnelID]
 	delete(p.data, tunnelID)
 	p.mu.Unlock()
 	if ok {
-		ln.Close()
+		entry.ln.Close()
+		ufwDelete(entry.remotePort, "tcp")
 		log.Printf("proxy: stopped listener for tunnel %s", tunnelID)
+	}
+}
+
+// stopAll closes every active proxy listener and removes their UFW rules.
+// Called during server shutdown.
+func (p *proxyStore) stopAll() {
+	p.mu.Lock()
+	entries := make(map[string]proxyEntry, len(p.data))
+	for k, v := range p.data {
+		entries[k] = v
+	}
+	p.data = make(map[string]proxyEntry)
+	p.mu.Unlock()
+	for tunnelID, entry := range entries {
+		entry.ln.Close()
+		ufwDelete(entry.remotePort, "tcp")
+		log.Printf("proxy: stopped listener for tunnel %s (shutdown)", tunnelID)
 	}
 }
 
