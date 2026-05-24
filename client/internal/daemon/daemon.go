@@ -212,7 +212,12 @@ func Connect(cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("building TLS config: %w", err)
 	}
-	tlsCfg.ServerName = cfg.RelayHost
+	// Only set ServerName (SNI) when actually verifying the certificate.
+	// With InsecureSkipVerify (no ca_cert_path), setting ServerName to an IP
+	// address can trigger unexpected TLS handshake behavior.
+	if cfg.CACertPath != "" {
+		tlsCfg.ServerName = cfg.RelayHost
+	}
 
 	log.Printf("connecting to relay %s", addr)
 	conn, err := tls.Dial("tcp", addr, tlsCfg)

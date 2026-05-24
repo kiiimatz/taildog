@@ -17,7 +17,8 @@ import (
 )
 
 // EnsureCerts creates a self-signed TLS certificate and key under
-// <dataDir>/tls/ if they do not already exist.
+// <dataDir>/tls/ if they do not already exist (or if they were generated with
+// the old CA-cert format that causes TLS handshake failures on some clients).
 // It returns the paths to the certificate and key files.
 func EnsureCerts(dataDir string) (certFile, keyFile string, err error) {
 	tlsDir := filepath.Join(dataDir, "tls")
@@ -28,8 +29,9 @@ func EnsureCerts(dataDir string) (certFile, keyFile string, err error) {
 	certFile = filepath.Join(tlsDir, "server.crt")
 	keyFile = filepath.Join(tlsDir, "server.key")
 
-	// Return early if both files already exist.
-	if fileExists(certFile) && fileExists(keyFile) {
+	// Return early only if both files exist AND the cert is the new format.
+	// Old certs had IsCA:true which causes TLS handshake errors.
+	if fileExists(certFile) && fileExists(keyFile) && !isLegacyCert(certFile) {
 		return certFile, keyFile, nil
 	}
 
@@ -39,9 +41,62 @@ func EnsureCerts(dataDir string) (certFile, keyFile string, err error) {
 	return certFile, keyFile, nil
 }
 
+// isLegacyCert returns true if the certificate at path was generated with the
+// old IsCA:true template (which causes "tls: bad certificate" on clients).
+func isLegacyCert(path string) bool {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return true
+	}
+	block, _ := pem.Decode(data)
+	if block == nil {
+		return true
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return true
+	}
+	return cert.IsCA
+}
+
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// localIPs collects all unicast IP addresses on the machine so they can be
+// embedded in the certificate's Subject Alternative Names.
+func localIPs() []net.IP {
+	ips := []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")}
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return ips
+	}
+	seen := map[string]bool{"127.0.0.1": true, "::1": true}
+	for _, iface := range ifaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var ip net.IP
+			switch v := addr.(type) {
+			case *net.IPNet:
+				ip = v.IP
+			case *net.IPAddr:
+				ip = v.IP
+			}
+			if ip == nil || ip.IsLoopback() {
+				continue
+			}
+			s := ip.String()
+			if !seen[s] {
+				seen[s] = true
+				ips = append(ips, ip)
+			}
+		}
+	}
+	return ips
 }
 
 func generate(certFile, keyFile string) error {
@@ -51,7 +106,6 @@ func generate(certFile, keyFile string) error {
 		return fmt.Errorf("tls: generate key: %w", err)
 	}
 
-	// Build the certificate template.
 	serialMax := new(big.Int).Lsh(big.NewInt(1), 128)
 	serial, err := rand.Int(rand.Reader, serialMax)
 	if err != nil {
@@ -65,14 +119,19 @@ func generate(certFile, keyFile string) error {
 			Organization: []string{"taildog relay"},
 			CommonName:   "taildog-relay",
 		},
-		NotBefore:             now.Add(-time.Minute), // slight backdating for clock skew
-		NotAfter:              now.Add(10 * 365 * 24 * time.Hour),
-		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		NotBefore: now.Add(-time.Minute), // slight backdating for clock skew
+		NotAfter:  now.Add(10 * 365 * 24 * time.Hour),
+
+		// Server leaf certificate — NOT a CA.
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
-		IsCA:                  true,
-		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("::1")},
-		DNSNames:              []string{"localhost"},
+		IsCA:                  false,
+
+		// Include all local IPs so the cert is valid regardless of which
+		// interface the client reaches the relay through.
+		IPAddresses: localIPs(),
+		DNSNames:    []string{"localhost"},
 	}
 
 	// Self-sign.
@@ -81,18 +140,15 @@ func generate(certFile, keyFile string) error {
 		return fmt.Errorf("tls: create cert: %w", err)
 	}
 
-	// Write certificate PEM.
 	if err := writePEM(certFile, "CERTIFICATE", certDER, 0o644); err != nil {
 		return err
 	}
 
-	// Marshal private key.
 	keyDER, err := x509.MarshalECPrivateKey(priv)
 	if err != nil {
 		return fmt.Errorf("tls: marshal key: %w", err)
 	}
 
-	// Write key PEM (owner-read only).
 	if err := writePEM(keyFile, "EC PRIVATE KEY", keyDER, 0o600); err != nil {
 		return err
 	}
