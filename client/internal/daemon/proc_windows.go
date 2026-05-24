@@ -65,7 +65,11 @@ func Stop() error {
 		return fmt.Errorf("finding process %d: %w", pid, err)
 	}
 	if err := proc.Kill(); err != nil {
-		return fmt.Errorf("killing process %d: %w", pid, err)
+		return fmt.Errorf(
+			"could not stop daemon (PID %d): %w\n"+
+				"If the daemon was started by a different user or as Administrator,\n"+
+				"stop it manually:  taskkill /PID %d /F",
+			pid, err, pid)
 	}
 
 	for i := 0; i < 50; i++ {

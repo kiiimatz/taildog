@@ -8,6 +8,9 @@ import (
 	"os/exec"
 )
 
+// installAutostart writes a per-user autostart entry to the Windows registry.
+// HKCU\...\Run does NOT require administrator privileges and fires every time
+// the current user logs in.
 func installAutostart() {
 	exe, err := os.Executable()
 	if err != nil {
@@ -15,18 +18,16 @@ func installAutostart() {
 		return
 	}
 
-	// Register a Task Scheduler task that runs at logon with highest privileges.
-	// /F overwrites any existing task with the same name.
-	out, err := exec.Command("schtasks",
-		"/Create", "/F",
-		"/TN", "Taildog",
-		"/SC", "ONLOGON",
-		"/TR", fmt.Sprintf(`"%s" up --foreground`, exe),
-		"/RL", "HIGHEST",
+	out, err := exec.Command("reg", "add",
+		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
+		"/v", "Taildog",
+		"/t", "REG_SZ",
+		"/d", fmt.Sprintf(`"%s" up --foreground`, exe),
+		"/f",
 	).CombinedOutput()
 	if err != nil {
-		fmt.Printf("autostart: could not register startup task: %v\n%s\n", err, out)
+		fmt.Printf("autostart: could not register startup entry: %v\n%s\n", err, out)
 		return
 	}
-	fmt.Println("taildog registered to start at login (Task Scheduler)")
+	fmt.Println("taildog registered to start at login (HKCU registry)")
 }

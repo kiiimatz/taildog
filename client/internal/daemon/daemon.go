@@ -440,15 +440,19 @@ func connectWithBackoff(cfg *config.Config) error {
 
 // buildTLSConfig returns a TLS config.
 // If caCertPath is set, the given CA bundle is trusted.
-// Otherwise, InsecureSkipVerify is used to accept the relay's self-signed cert.
+// Otherwise, all certificate verification is bypassed to accept the relay's
+// self-signed cert.  The channel is still TLS-encrypted.
 func buildTLSConfig(caCertPath string) (*tls.Config, error) {
 	if caCertPath == "" {
-		// Self-hosted relays use self-signed certificates; skip verification.
-		// The control channel is still encrypted — only cert authenticity is
-		// not checked. Use --ca-cert for pinned verification in production.
 		return &tls.Config{
 			MinVersion:         tls.VersionTLS12,
 			InsecureSkipVerify: true, //nolint:gosec
+			// VerifyPeerCertificate provides a belt-and-suspenders bypass on
+			// platforms (e.g. Windows) where InsecureSkipVerify alone may not
+			// suppress all certificate-level TLS alerts.
+			VerifyPeerCertificate: func([][]byte, [][]*x509.Certificate) error {
+				return nil
+			},
 		}, nil
 	}
 	caPEM, err := os.ReadFile(caCertPath)
