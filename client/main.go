@@ -33,6 +33,9 @@ func buildRoot() *cobra.Command {
 		Use:   "taildog",
 		Short: "taildog – secure tunnel client",
 		Long:  "taildog manages encrypted tunnels to a remote relay server.",
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			return requireAdmin()
+		},
 	}
 
 	root.AddCommand(
@@ -55,18 +58,18 @@ func buildRoot() *cobra.Command {
 func cmdUp() *cobra.Command {
 	var foreground bool
 	cmd := &cobra.Command{
-		Use:   "up [relay-host]",
+		Use:   "up <relay-host>",
 		Short: "Start the taildog daemon",
 		Long: `Start the taildog daemon and connect to the relay server.
 
-Optionally pass the relay server's IP or hostname as the first argument.
+The relay server's IP or hostname is required.
 This overwrites relay_host in the config file.
 
   taildog up 203.0.113.10
   taildog up relay.example.com`,
-		Args: cobra.MaximumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(args) > 0 {
+			if !foreground {
 				cfg, err := config.Load()
 				if err != nil {
 					return fmt.Errorf("loading config: %w", err)

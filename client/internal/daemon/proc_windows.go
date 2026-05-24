@@ -10,10 +10,12 @@ import (
 )
 
 // procAttrs returns Windows process attributes.
-// CREATE_NEW_PROCESS_GROUP lets the child run independently of the parent.
+// CREATE_NEW_PROCESS_GROUP + DETACHED_PROCESS fully decouple the child from the
+// parent console so it survives after the parent terminal closes.
 func procAttrs() *syscall.SysProcAttr {
+	const detachedProcess = 0x00000008 // DETACHED_PROCESS
 	return &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
+		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP | detachedProcess,
 	}
 }
 

@@ -11,6 +11,10 @@ import (
 var version = "dev"
 
 func main() {
+	if err := requireAdmin(); err != nil {
+		log.Fatalf("%v", err)
+	}
+
 	cfg := server.DefaultConfig()
 
 	flag.StringVar(&cfg.DataDir, "data-dir", cfg.DataDir, "directory for DB, certs and secrets")

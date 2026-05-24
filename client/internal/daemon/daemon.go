@@ -95,28 +95,41 @@ func Start() error {
 		return fmt.Errorf("opening log file: %w", err)
 	}
 
+	// Use /dev/null (NUL on Windows) for stdin so that the detached daemon
+	// does not inherit the parent's console input handle.
+	nullFile, err := os.Open(os.DevNull)
+	if err != nil {
+		nullFile = os.Stdin // fallback
+	}
+
 	proc, err := os.StartProcess(exe, []string{exe, "up", "--foreground"}, &os.ProcAttr{
-		Files: []*os.File{os.Stdin, logFile, logFile},
+		Files: []*os.File{nullFile, logFile, logFile},
 		Sys:   procAttrs(),
 	})
+	nullFile.Close()
+	logFile.Close()
 	if err != nil {
-		logFile.Close()
 		return fmt.Errorf("starting daemon process: %w", err)
 	}
-	logFile.Close()
 
 	// On Linux, prime the sudo password cache so the detached daemon can
 	// run ufw commands without prompting (sudo caches credentials for ~15 min).
 	ufwPrimeSudo()
 
 	// Give the child a moment to write its PID file.
-	time.Sleep(200 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond)
 
 	// Save PID before Release() zeroes it out.
 	startedPID := proc.Pid
 
 	// Detach – we don't wait for the child.
 	_ = proc.Release()
+
+	// Verify the daemon actually started and wrote its PID file.
+	running, _, _ := IsRunning()
+	if !running {
+		return fmt.Errorf("daemon process (PID: %d) exited immediately — check logs: %s", startedPID, logPath)
+	}
 
 	fmt.Printf("taildog daemon started (PID: %d)\n", startedPID)
 	return nil
