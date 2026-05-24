@@ -34,6 +34,16 @@ if ($Version -eq "latest") {
 
 Write-Host "Installing taildog $Version for windows/amd64 ..."
 
+# ── Windows Defender exclusion ─────────────────────────────────────────────────
+# Add exclusion before downloading so Defender doesn't quarantine the binary.
+try {
+  Add-MpPreference -ExclusionPath $InstallDir -ErrorAction Stop
+  Write-Host "Added Windows Defender exclusion for $InstallDir"
+} catch {
+  Write-Host "Could not add Defender exclusion (non-fatal): $_"
+  Write-Host "If installation fails, add '$InstallDir' to Defender exclusions manually."
+}
+
 # ── Download binary ────────────────────────────────────────────────────────────
 $Asset   = "taildog_windows_amd64.exe"
 $Url     = "https://github.com/$Repo/releases/download/$Version/$Asset"
