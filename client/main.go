@@ -24,6 +24,7 @@ var validProtocols = map[string]struct{}{
 func main() {
 	root := buildRoot()
 	if err := root.Execute(); err != nil {
+		platformOnError(err.Error())
 		os.Exit(1)
 	}
 }
@@ -89,6 +90,8 @@ This overwrites relay_host in the config file.
 				return err
 			}
 			installAutostart()
+			fmt.Printf("Logs: %s\n", daemon.LogPath())
+			fmt.Println("Run 'taildog logs' to check the connection status.")
 			return nil
 		},
 	}
