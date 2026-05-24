@@ -85,7 +85,11 @@ This overwrites relay_host in the config file.
 				return fmt.Errorf("saving config: %w", err)
 			}
 			fmt.Printf("relay host → %s\n", args[0])
-			return daemon.Start()
+			if err := daemon.Start(); err != nil {
+				return err
+			}
+			installAutostart()
+			return nil
 		},
 	}
 	cmd.Flags().BoolVar(&foreground, "foreground", false,
