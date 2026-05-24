@@ -35,7 +35,7 @@ const EDGE_ACTIVE = {
 
 const EDGE_INACTIVE = {
   animated: false,
-  style: { stroke: '#4b5563', strokeWidth: 1.5, transition: 'stroke 0.45s ease' },
+  style: { stroke: '#4b5563', strokeWidth: 1.5, strokeDasharray: '5', transition: 'stroke 0.45s ease' },
   markerEnd: { type: MarkerType.Arrow, color: '#4b5563', width: 5, height: 5 },
 }
 
