@@ -17,33 +17,35 @@ func procAttrs() *syscall.SysProcAttr {
 	}
 }
 
-// IsRunning checks whether the PID stored in the PID file is alive.
-// On Windows, os.FindProcess always succeeds; we open the process handle to
-// confirm it is still running.
+// IsRunning checks whether the daemon is alive on Windows.
+// Signal(0) is meaningless on Windows (returns EWINDOWS for any non-SIGKILL
+// signal), so we use OpenProcess + WaitForSingleObject(0ms) instead.
 func IsRunning() (bool, int, error) {
 	pid, err := readPIDFile()
 	if err != nil || pid == 0 {
 		return false, 0, err
 	}
 
-	proc, err := os.FindProcess(pid)
+	const (
+		processQueryLimitedInformation = 0x1000
+		waitTimeout                    = 258 // WAIT_TIMEOUT — process still running
+	)
+
+	handle, err := syscall.OpenProcess(processQueryLimitedInformation, false, uint32(pid))
+	if err != nil {
+		// Process not found or access denied — treat as gone.
+		return false, pid, nil
+	}
+	defer syscall.CloseHandle(handle) //nolint:errcheck
+
+	// 0ms timeout: returns immediately.
+	// WAIT_OBJECT_0 (0)   → process exited
+	// WAIT_TIMEOUT  (258) → process still running
+	event, err := syscall.WaitForSingleObject(handle, 0)
 	if err != nil {
 		return false, pid, nil
 	}
-
-	// On Windows, Signal(0) is not meaningful. We attempt a no-op signal and
-	// fall back to checking whether Wait returns immediately.
-	// The idiomatic Windows check: open the process with SYNCHRONIZE rights,
-	// then WaitForSingleObject with timeout 0. We approximate this by
-	// calling proc.Signal(os.Interrupt) which on Windows sends CTRL_BREAK — not
-	// what we want. Instead we use a non-signalling technique: try to kill with
-	// exit code query via OpenProcess. Because the standard library does not
-	// expose this, we use a simple heuristic: if Release succeeds it was found.
-	// A more reliable approach uses the windows package; we keep it dependency-free.
-	if err := proc.Signal(syscall.Signal(0)); err != nil {
-		return false, pid, nil
-	}
-	return true, pid, nil
+	return event == waitTimeout, pid, nil
 }
 
 // Stop terminates the daemon process on Windows.
@@ -60,8 +62,6 @@ func Stop() error {
 	if err != nil {
 		return fmt.Errorf("finding process %d: %w", pid, err)
 	}
-
-	// Windows does not support SIGTERM; kill immediately.
 	if err := proc.Kill(); err != nil {
 		return fmt.Errorf("killing process %d: %w", pid, err)
 	}
@@ -74,7 +74,6 @@ func Stop() error {
 			return nil
 		}
 	}
-
 	removePID()
 	fmt.Println("taildog daemon stopped")
 	return nil
