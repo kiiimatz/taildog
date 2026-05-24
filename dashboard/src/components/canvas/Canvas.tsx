@@ -27,11 +27,20 @@ import { createTunnel, deleteTunnel, getCanvasState, saveCanvasState, getAccessT
 const nodeTypes: NodeTypes = { server: ServerNode, client: ClientNode, tunnel: TunnelNode }
 type RFNode = Node<Record<string, unknown>>
 
-const DEFAULT_EDGE_STYLE = {
-  type: 'default' as const,
+const EDGE_ACTIVE = {
   animated: true,
-  style: { stroke: '#378ADD', strokeWidth: 1.5 },
+  style: { stroke: '#378ADD', strokeWidth: 1.5, transition: 'stroke 0.45s ease' },
   markerEnd: { type: MarkerType.Arrow, color: '#378ADD', width: 5, height: 5 },
+}
+
+const EDGE_INACTIVE = {
+  animated: false,
+  style: { stroke: '#4b5563', strokeWidth: 1.5, transition: 'stroke 0.45s ease' },
+  markerEnd: { type: MarkerType.Arrow, color: '#4b5563', width: 5, height: 5 },
+}
+
+function computeEdgeProps(active: boolean) {
+  return active ? EDGE_ACTIVE : EDGE_INACTIVE
 }
 
 export default function Canvas() {
@@ -222,7 +231,8 @@ export default function Canvas() {
       if (Array.isArray(saved.edges)) {
         type SavedEdge = { id: string; source: string; target: string }
         const restoredEdges: Edge[] = (saved.edges as SavedEdge[]).map((e) => ({
-          ...DEFAULT_EDGE_STYLE,
+          type: 'default' as const,
+          ...computeEdgeProps(false), // sync effect will correct styles once nodes are ready
           id: e.id,
           source: e.source,
           target: e.target,
@@ -331,6 +341,34 @@ export default function Canvas() {
       return n
     }))
   }, [clients]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Sync edge styles (active/inactive) based on node state ───────────────
+  // Tunnel→Server: blue+animated when tunnel is active, grey+still otherwise
+  // Client→Tunnel: blue+animated when client is online, grey+still otherwise
+  useEffect(() => {
+    const nodeMap = new Map(nodes.map((n) => [n.id, n]))
+    setEdges((es) => {
+      let changed = false
+      const next = es.map((e) => {
+        const source = nodeMap.get(e.source)
+        const target = nodeMap.get(e.target)
+        let active = false
+        if (source?.type === 'client' && target?.type === 'tunnel') {
+          active = (source.data as ClientNodeData & Record<string, unknown>).online === true
+        } else if (source?.type === 'tunnel' && target?.id === 'server') {
+          active = (source.data as TunnelNodeData & Record<string, unknown>).status === 'active'
+        } else {
+          return e // unrecognised edge — leave as-is
+        }
+        const props = computeEdgeProps(active)
+        const curStroke = (e.style as { stroke?: string } | undefined)?.stroke
+        if (e.animated === props.animated && curStroke === props.style.stroke) return e
+        changed = true
+        return { ...e, ...props }
+      })
+      return changed ? next : es
+    })
+  }, [nodes, edges]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Sync server node ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -490,8 +528,16 @@ export default function Canvas() {
       }
     }
 
+    // Compute initial active state for the new edge
+    let initialActive = false
+    if (isClientToTunnel) {
+      initialActive = (sourceNode.data as ClientNodeData & Record<string, unknown>).online === true
+    }
+    // tunnel→server edges start inactive; the sync effect activates them if the tunnel is already on
+
     setEdges((es) => [...es, {
-      ...DEFAULT_EDGE_STYLE,
+      type: 'default' as const,
+      ...computeEdgeProps(initialActive),
       id: `e-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       source: connection.source!,
       target: connection.target!,
