@@ -67,22 +67,24 @@ This overwrites relay_host in the config file.
 
   taildog up 203.0.113.10
   taildog up relay.example.com`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if !foreground {
-				cfg, err := config.Load()
-				if err != nil {
-					return fmt.Errorf("loading config: %w", err)
-				}
-				cfg.RelayHost = args[0]
-				if err := config.Save(cfg); err != nil {
-					return fmt.Errorf("saving config: %w", err)
-				}
-				fmt.Printf("relay host → %s\n", args[0])
-			}
 			if foreground {
+				// Internal re-invocation by daemon.Start() — no relay-host arg needed.
 				return daemon.RunForeground()
 			}
+			if len(args) == 0 {
+				return fmt.Errorf("relay-host is required\n\nUsage: taildog up <relay-host>")
+			}
+			cfg, err := config.Load()
+			if err != nil {
+				return fmt.Errorf("loading config: %w", err)
+			}
+			cfg.RelayHost = args[0]
+			if err := config.Save(cfg); err != nil {
+				return fmt.Errorf("saving config: %w", err)
+			}
+			fmt.Printf("relay host → %s\n", args[0])
 			return daemon.Start()
 		},
 	}
