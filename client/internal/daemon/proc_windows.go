@@ -20,18 +20,17 @@ func procAttrs() *syscall.SysProcAttr {
 }
 
 // IsRunning checks whether the daemon is alive on Windows.
-// Signal(0) is meaningless on Windows (returns EWINDOWS for any non-SIGKILL
-// signal), so we use OpenProcess + WaitForSingleObject(0ms) instead.
+// We use OpenProcess + GetExitCodeProcess: GetExitCodeProcess requires only
+// PROCESS_QUERY_LIMITED_INFORMATION (WaitForSingleObject additionally needs
+// SYNCHRONIZE which we don't request, so it would fail with access-denied).
+// GetExitCodeProcess returns STILL_ACTIVE (259) for a running process.
 func IsRunning() (bool, int, error) {
 	pid, err := readPIDFile()
 	if err != nil || pid == 0 {
 		return false, 0, err
 	}
 
-	const (
-		processQueryLimitedInformation = 0x1000
-		waitTimeout                    = 258 // WAIT_TIMEOUT — process still running
-	)
+	const processQueryLimitedInformation = 0x1000
 
 	handle, err := syscall.OpenProcess(processQueryLimitedInformation, false, uint32(pid))
 	if err != nil {
@@ -40,14 +39,12 @@ func IsRunning() (bool, int, error) {
 	}
 	defer syscall.CloseHandle(handle) //nolint:errcheck
 
-	// 0ms timeout: returns immediately.
-	// WAIT_OBJECT_0 (0)   → process exited
-	// WAIT_TIMEOUT  (258) → process still running
-	event, err := syscall.WaitForSingleObject(handle, 0)
-	if err != nil {
+	var exitCode uint32
+	if err := syscall.GetExitCodeProcess(handle, &exitCode); err != nil {
 		return false, pid, nil
 	}
-	return event == waitTimeout, pid, nil
+	// STILL_ACTIVE (259) means the process has not exited yet.
+	return exitCode == 259, pid, nil
 }
 
 // Stop terminates the daemon process on Windows.

@@ -148,7 +148,10 @@ func RunForeground() error {
 	}
 	defer logFile.Close()
 
-	log.SetOutput(io.MultiWriter(os.Stderr, logFile))
+	// Write logs to the file only.  The parent already set fd-1/fd-2 of this
+	// child process to logFile, so os.Stderr IS logFile; using MultiWriter
+	// would write every line twice to the same physical file.
+	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lmsgprefix)
 	log.SetPrefix("[taildog] ")
 
@@ -343,9 +346,9 @@ func Connect(cfg *config.Config) error {
 					continue
 				}
 
-				localConn, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", localPort))
+				localConn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", localPort))
 				if err != nil {
-					log.Printf("open: dial 127.0.0.1:%d failed: %v", localPort, err)
+					log.Printf("open: dial localhost:%d failed: %v", localPort, err)
 					safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck
 					continue
 				}
@@ -353,7 +356,7 @@ func Connect(cfg *config.Config) error {
 				localMu.Lock()
 				localConns[connID] = localConn
 				localMu.Unlock()
-				log.Printf("open: connected 127.0.0.1:%d connID=%s", localPort, connID)
+				log.Printf("open: connected localhost:%d connID=%s", localPort, connID)
 
 				// Read from local connection, send data frames to relay.
 				go func(connID string, localConn net.Conn) {

@@ -18,7 +18,14 @@ func ufwAvailable() bool {
 }
 
 func runUFW(args ...string) error {
-	cmd := exec.Command("sudo", append([]string{"ufw"}, args...)...)
+	// If already running as root (uid 0), call ufw directly — sudo requires a
+	// TTY to prompt for a password, and the relay may be started without one.
+	var cmd *exec.Cmd
+	if os.Getuid() == 0 {
+		cmd = exec.Command("ufw", args...)
+	} else {
+		cmd = exec.Command("sudo", append([]string{"ufw"}, args...)...)
+	}
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
