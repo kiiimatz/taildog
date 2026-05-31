@@ -28,7 +28,7 @@ func requireAdmin() error {
 		return nil
 	}
 	if elevation == 0 {
-		return fmt.Errorf("taildog-relay must be run as Administrator\n\nRight-click your terminal and choose \"Run as administrator\", then try again.")
+		return fmt.Errorf("renode-relay must be run as Administrator\n\nRight-click your terminal and choose \"Run as administrator\", then try again.")
 	}
 	return nil
 }

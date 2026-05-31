@@ -28,7 +28,7 @@ func TestSaveAndLoad(t *testing.T) {
 	}()
 
 	// Create config dir
-	cfgDir := filepath.Join(dir, ".taildog")
+	cfgDir := filepath.Join(dir, ".renode")
 	if err := os.MkdirAll(cfgDir, 0700); err != nil {
 		t.Fatal(err)
 	}

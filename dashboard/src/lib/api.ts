@@ -10,7 +10,7 @@ export function getAccessToken() {
   return accessToken
 }
 
-const REFRESH_TOKEN_KEY = 'taildog_refresh_token'
+const REFRESH_TOKEN_KEY = 'renode_refresh_token'
 
 export function saveRefreshToken(token: string) {
   localStorage.setItem(REFRESH_TOKEN_KEY, token)

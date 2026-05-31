@@ -25,6 +25,10 @@
   --accent:      #378ADD;
   --accent-dark: #185FA5;
   --success:     #1D9E75;
+
+  --sidebar-bg:     rgba(245, 245, 243, 0.88);
+  --sidebar-border: rgba(0, 0, 0, 0.10);
+  --sidebar-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06), 0 0 0 0.5px rgba(0,0,0,0.05);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -46,6 +50,10 @@
     --border-tertiary:  rgba(255,255,255,0.04);
 
     --dot-color: rgba(255,255,255,0.08);
+
+    --sidebar-bg:     rgba(28, 28, 28, 0.82);
+    --sidebar-border: rgba(255, 255, 255, 0.08);
+    --sidebar-shadow: 0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2), 0 0 0 0.5px rgba(255,255,255,0.04);
   }
 }
 

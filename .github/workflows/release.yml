@@ -50,7 +50,7 @@ jobs:
             GOOS=$goos GOARCH=$goarch go build \
               -tags embed \
               -ldflags="-s -w -X main.version=${VERSION}" \
-              -o "dist/taildog-relay_${goos}_${goarch}${ext}" \
+              -o "dist/renode-relay_${goos}_${goarch}${ext}" \
               ./relay
           }
 
@@ -61,7 +61,7 @@ jobs:
             GOOS=$goos GOARCH=$goarch go build \
               -tags embed \
               -ldflags="-s -w -X main.clientVersion=${VERSION}" \
-              -o "dist/taildog_${goos}_${goarch}${ext}" \
+              -o "dist/renode_${goos}_${goarch}${ext}" \
               ./client
           }
 

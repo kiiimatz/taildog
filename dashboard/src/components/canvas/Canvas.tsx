@@ -52,7 +52,7 @@ export default function Canvas() {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadedRef = useRef(false)       // prevents duplicate load
   const canSaveRef = useRef(false)      // only save after initial load completes
-  const { screenToFlowPosition, getNodes, getEdges, fitView } = useReactFlow()
+  const { screenToFlowPosition, getNodes, getEdges, setViewport } = useReactFlow()
 
   const clients = useAppStore((s) => s.clients)
   const serverInfo = useAppStore((s) => s.serverInfo)
@@ -62,6 +62,49 @@ export default function Canvas() {
   const removeCanvasClient = useAppStore((s) => s.removeCanvasClient)
   const addToast = useAppStore((s) => s.addToast)
   const setIsDraggingCanvasNode = useAppStore((s) => s.setIsDraggingCanvasNode)
+
+  // ── Sidebar-aware fitView ─────────────────────────────────────────────────
+  // React Flow's screen↔flow transform:
+  //   screen_x = flow_x * zoom + viewport.x
+  //   screen_y = flow_y * zoom + viewport.y
+  //
+  // Sidebar: position:absolute left:16 width:240, plus 16px gutter = 272px total
+  const fitViewWithSidebar = useCallback((duration: number) => {
+    const allNodes = getNodes()
+    if (allNodes.length === 0) return
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const n of allNodes) {
+      const x = n.position.x
+      const y = n.position.y
+      const w = (n.measured as undefined | { width?: number })?.width  ?? 150
+      const h = (n.measured as undefined | { height?: number })?.height ?? 60
+      if (x       < minX) minX = x
+      if (y       < minY) minY = y
+      if (x + w   > maxX) maxX = x + w
+      if (y + h   > maxY) maxY = y + h
+    }
+    if (!isFinite(minX)) return
+
+    const SIDEBAR_RIGHT = 272          // left:16 + width:240 + gutter:16
+    const W = window.innerWidth - SIDEBAR_RIGHT
+    const H = window.innerHeight
+    const bw = Math.max(maxX - minX, 1)
+    const bh = Math.max(maxY - minY, 1)
+    const pad = 0.15
+
+    const rawZoom = Math.min(
+      (W * (1 - 2 * pad)) / bw,
+      (H * (1 - 2 * pad)) / bh,
+      3
+    )
+    const z = Math.max(0.3, rawZoom)
+
+    const vx = (SIDEBAR_RIGHT + W / 2) - ((minX + maxX) / 2) * z
+    const vy = (H / 2)                 - ((minY + maxY) / 2) * z
+
+    setViewport({ x: vx, y: vy, zoom: z }, { duration })
+  }, [getNodes, setViewport]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Stable callback refs ───────────────────────────────────────────────────
   const updateTunnelDataRef = useRef((_id: string, _field: string, _value: string) => {})
@@ -251,7 +294,7 @@ export default function Canvas() {
       // Allow saves only after load is complete
       canSaveRef.current = true
       // Fit all nodes into view after restoration
-      setTimeout(() => fitView({ padding: 0.15, duration: 400 }), 100)
+      setTimeout(() => fitViewWithSidebar(400), 100)
     }).catch(() => {
       canSaveRef.current = true
     })
@@ -374,7 +417,7 @@ export default function Canvas() {
   useEffect(() => {
     setNodes((nds) => {
       const data: ServerNodeData & Record<string, unknown> = {
-        name: serverInfo?.serverName ?? 'taildog-relay',
+        name: serverInfo?.serverName ?? 'renode-relay',
         ip: serverInfo?.serverIP ?? '',
         ports: [],
       }
@@ -434,11 +477,11 @@ export default function Canvas() {
     let timer: ReturnType<typeof setTimeout>
     const handleResize = () => {
       clearTimeout(timer)
-      timer = setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 150)
+      timer = setTimeout(() => fitViewWithSidebar(300), 150)
     }
     window.addEventListener('resize', handleResize)
     return () => { window.removeEventListener('resize', handleResize); clearTimeout(timer) }
-  }, [fitView])
+  }, [fitViewWithSidebar])
 
   // ── Drop handler ──────────────────────────────────────────────────────────
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -467,15 +510,19 @@ export default function Canvas() {
 
   // ── Node drag: detect when dragging over sidebar ──────────────────────────
   const onNodeDrag = useCallback((event: React.MouseEvent) => {
-    const canvasLeft = wrapper.current?.getBoundingClientRect().left ?? 0
-    setIsDraggingCanvasNode(event.clientX < canvasLeft)
+    const sidebarEl = document.querySelector('[data-sidebar]')
+    const r = sidebarEl?.getBoundingClientRect()
+    const over = !!r && event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom
+    setIsDraggingCanvasNode(over)
   }, [setIsDraggingCanvasNode])
 
   const onNodeDragStop = useCallback(async (event: React.MouseEvent, node: RFNode) => {
-    const canvasLeft = wrapper.current?.getBoundingClientRect().left ?? 0
     setIsDraggingCanvasNode(false)
+    const sidebarEl = document.querySelector('[data-sidebar]')
+    const r = sidebarEl?.getBoundingClientRect()
+    const droppedOnSidebar = !!r && event.clientX >= r.left && event.clientX <= r.right && event.clientY >= r.top && event.clientY <= r.bottom
 
-    if (event.clientX < canvasLeft) {
+    if (droppedOnSidebar) {
       // Dropped onto sidebar → delete the node (server is protected)
       if (node.id === 'server') return
       if (node.type === 'tunnel') {
@@ -573,7 +620,7 @@ export default function Canvas() {
   return (
     <div
       ref={wrapper}
-      style={{ flex: 1, position: 'relative' }}
+      style={{ position: 'absolute', inset: 0 }}
       onDrop={onDrop}
       onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
@@ -613,10 +660,10 @@ export default function Canvas() {
 
       {/* Fit-view button */}
       <button
-        onClick={() => fitView({ padding: 0.15, duration: 400 })}
+        onClick={() => fitViewWithSidebar(400)}
         title="Fit all nodes to view"
         style={{
-          position: 'absolute', bottom: 16, left: 16, zIndex: 10,
+          position: 'absolute', bottom: 16, right: 16, zIndex: 10,
           width: 28, height: 28, borderRadius: 7,
           background: 'var(--bg-primary)',
           border: '0.5px solid var(--border-primary)',

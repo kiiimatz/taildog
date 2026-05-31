@@ -1,11 +1,11 @@
-// taildog relay daemon — entry point.
+// renode relay daemon — entry point.
 package main
 
 import (
 	"flag"
 	"log"
 
-	"github.com/kiiimatz/taildog/relay/server"
+	"github.com/kiiimatz/renode/relay/server"
 )
 
 var version = "dev"

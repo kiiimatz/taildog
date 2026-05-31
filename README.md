@@ -1,43 +1,43 @@
-# taildog
+# renode
 
 Open-source tunneling service — expose local ports through a relay server, with a visual canvas dashboard.
 
-[![Release](https://img.shields.io/github/v/release/kiiimatz/taildog)](https://github.com/kiiimatz/taildog/releases)
+[![Release](https://img.shields.io/github/v/release/kiiimatz/renode)](https://github.com/kiiimatz/renode/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Install
 
 **Linux / macOS**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/kiiimatz/taildog/main/install/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/kiiimatz/renode/main/install/install.sh | bash
 ```
 
 **Windows (PowerShell, run as Administrator)**
 ```powershell
-iwr https://raw.githubusercontent.com/kiiimatz/taildog/main/install/install.ps1 | iex
+iwr https://raw.githubusercontent.com/kiiimatz/renode/main/install/install.ps1 | iex
 ```
 
 ## Quick start
 
 ```bash
-# 1. Edit ~/.taildog/config.yaml — set relay_host
-taildog status
+# 1. Edit ~/.renode/config.yaml — set relay_host
+renode status
 
 # 2. Connect to relay
-taildog up
+renode up
 
 # 3. Add your first tunnel
-taildog add http 3000          # forward local :3000 → relay :3000
-taildog add tcp 5432 15432     # forward local :5432 → relay :15432
+renode add http 3000          # forward local :3000 → relay :3000
+renode add tcp 5432 15432     # forward local :5432 → relay :15432
 
 # 4. List tunnels
-taildog status
+renode status
 
 # 5. Remove a tunnel
-taildog remove <id>
+renode remove <id>
 
 # 6. Stop daemon
-taildog down
+renode down
 ```
 
 ## Dashboard
@@ -63,7 +63,7 @@ Open `http://<relay-host>:7701` in your browser.
 
 ## Config file
 
-`~/.taildog/config.yaml` (Linux/macOS) · `%APPDATA%\taildog\config.yaml` (Windows)
+`~/.renode/config.yaml` (Linux/macOS) · `%APPDATA%\renode\config.yaml` (Windows)
 
 ```yaml
 relay_host: relay.example.com
@@ -111,7 +111,7 @@ The relay exposes a REST + WebSocket API on port **7701** (TLS).
 ## Repository structure
 
 ```
-taildog/
+renode/
 ├── relay/        # Relay daemon (Go) — mTLS server, REST API, SQLite
 ├── client/       # Client daemon (Go) — CLI, tunnel management
 ├── dashboard/    # Web UI (React + Vite + TypeScript)
@@ -124,4 +124,4 @@ taildog/
 
 ## License
 
-MIT © taildog contributors
+MIT © renode contributors

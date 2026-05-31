@@ -1,5 +1,5 @@
-// Package server exposes the taildog relay as a callable library so that
-// other binaries (e.g. the combined taildog CLI) can embed it.
+// Package server exposes the renode relay as a callable library so that
+// other binaries (e.g. the combined renode CLI) can embed it.
 package server
 
 import (
@@ -14,11 +14,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kiiimatz/taildog/relay/internal/api"
-	"github.com/kiiimatz/taildog/relay/internal/auth"
-	"github.com/kiiimatz/taildog/relay/internal/db"
-	internaltls "github.com/kiiimatz/taildog/relay/internal/tls"
-	"github.com/kiiimatz/taildog/relay/internal/tunnel"
+	"github.com/kiiimatz/renode/relay/internal/api"
+	"github.com/kiiimatz/renode/relay/internal/auth"
+	"github.com/kiiimatz/renode/relay/internal/db"
+	internaltls "github.com/kiiimatz/renode/relay/internal/tls"
+	"github.com/kiiimatz/renode/relay/internal/tunnel"
 )
 
 // Config holds all configuration for the relay server.
@@ -134,7 +134,7 @@ func Run(cfg Config) error {
 	}
 	go AcceptControlConnections(controlListener, registry, hub, database)
 
-	log.Printf("taildog relay  control :%d  api+dashboard :%d", cfg.ControlPort, cfg.APIPort)
+	log.Printf("renode relay  control :%d  api+dashboard :%d", cfg.ControlPort, cfg.APIPort)
 
 	// ── Graceful shutdown ─────────────────────────────────────────────────
 	quit := make(chan os.Signal, 1)

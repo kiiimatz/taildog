@@ -11,7 +11,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/kiiimatz/taildog/relay/internal/db"
+	"github.com/kiiimatz/renode/relay/internal/db"
 )
 
 var usernameRE = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,32}$`)
@@ -79,7 +79,7 @@ func RunWizard(database *db.DB) error {
 		return fmt.Errorf("wizard: create user: %w", err)
 	}
 
-	fmt.Printf("  Admin account '%s' created. Enjoy taildog!\n", username)
+	fmt.Printf("  Admin account '%s' created. Enjoy renode!\n", username)
 	printDivider()
 	return nil
 }
@@ -119,7 +119,7 @@ func validatePassword(p string) error {
 
 func printBanner() {
 	printDivider()
-	fmt.Println("  taildog — First-time setup")
+	fmt.Println("  renode — First-time setup")
 	printDivider()
 	fmt.Println("  Welcome! Let's create your admin account.")
 	fmt.Println()

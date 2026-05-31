@@ -73,11 +73,11 @@ func Stop() error {
 		time.Sleep(100 * time.Millisecond)
 		if alive, _, _ := IsRunning(); !alive {
 			removePID()
-			fmt.Println("taildog daemon stopped")
+			fmt.Println("renode daemon stopped")
 			return nil
 		}
 	}
 	removePID()
-	fmt.Println("taildog daemon stopped")
+	fmt.Println("renode daemon stopped")
 	return nil
 }

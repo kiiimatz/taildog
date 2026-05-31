@@ -29,13 +29,13 @@ type Tunnel struct {
 func ConfigPath() string {
 	var dir string
 	if runtime.GOOS == "windows" {
-		dir = filepath.Join(os.Getenv("APPDATA"), "taildog")
+		dir = filepath.Join(os.Getenv("APPDATA"), "renode")
 	} else {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			home = "."
 		}
-		dir = filepath.Join(home, ".taildog")
+		dir = filepath.Join(home, ".renode")
 	}
 	return filepath.Join(dir, "config.yaml")
 }

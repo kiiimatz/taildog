@@ -1,4 +1,4 @@
-module github.com/kiiimatz/taildog/relay
+module github.com/kiiimatz/renode/relay
 
 go 1.22
 

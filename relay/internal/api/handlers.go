@@ -15,10 +15,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/kiiimatz/taildog/relay/internal/auth"
-	"github.com/kiiimatz/taildog/relay/internal/db"
-	"github.com/kiiimatz/taildog/relay/internal/tunnel"
-	"github.com/kiiimatz/taildog/relay/internal/web"
+	"github.com/kiiimatz/renode/relay/internal/auth"
+	"github.com/kiiimatz/renode/relay/internal/db"
+	"github.com/kiiimatz/renode/relay/internal/tunnel"
+	"github.com/kiiimatz/renode/relay/internal/web"
 )
 
 const relayVersion = "0.1.0"
@@ -411,7 +411,7 @@ func (s *Server) handleServerInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	serverName := r.Host
 	if serverName == "" {
-		serverName = "taildog-relay"
+		serverName = "renode-relay"
 	}
 	// Strip port from Host if present
 	if h, _, err := net.SplitHostPort(serverName); err == nil {

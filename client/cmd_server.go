@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/kiiimatz/taildog/relay/server"
+	"github.com/kiiimatz/renode/relay/server"
 	"github.com/spf13/cobra"
 )
 
@@ -10,8 +10,8 @@ func cmdServer() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "server",
-		Short: "Run the taildog relay server",
-		Long: `Start the taildog relay server.
+		Short: "Run the renode relay server",
+		Long: `Start the renode relay server.
 
 The server listens for client daemon connections (control port) and serves
 the REST API and web dashboard (api port) over TLS.

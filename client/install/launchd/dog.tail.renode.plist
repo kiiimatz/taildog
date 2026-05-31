@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>dog.tail.taildog</string>
+  <string>dog.tail.renode</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/local/bin/taildog</string>
+    <string>/usr/local/bin/renode</string>
     <string>up</string>
     <string>--foreground</string>
   </array>
@@ -15,8 +15,8 @@
   <key>KeepAlive</key>
   <true/>
   <key>StandardErrorPath</key>
-  <string>/tmp/taildog.err</string>
+  <string>/tmp/renode.err</string>
   <key>StandardOutPath</key>
-  <string>/tmp/taildog.out</string>
+  <string>/tmp/renode.out</string>
 </dict>
 </plist>

@@ -60,7 +60,7 @@ function ServerNode({ data }: NodeProps) {
       {/* Text */}
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {d.name || 'taildog-relay'}
+          {d.name || 'renode-relay'}
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-tertiary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {formatIP(d.ip)}

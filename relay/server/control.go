@@ -9,9 +9,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/kiiimatz/taildog/relay/internal/api"
-	"github.com/kiiimatz/taildog/relay/internal/db"
-	"github.com/kiiimatz/taildog/relay/internal/tunnel"
+	"github.com/kiiimatz/renode/relay/internal/api"
+	"github.com/kiiimatz/renode/relay/internal/db"
+	"github.com/kiiimatz/renode/relay/internal/tunnel"
 )
 
 type helloMsg struct {
@@ -64,13 +64,17 @@ func HandleControlConn(conn net.Conn, registry *tunnel.Registry, hub *api.Hub, d
 
 	sessions.set(hello.ClientID, sess)
 	defer func() {
+		// Remove the session first so new proxy connections don't reach a
+		// half-closed pipe while we're tearing down in-flight connections.
 		sessions.del(hello.ClientID)
+		// Close any external TCP connections that are currently bridged through
+		// this daemon session (they will be re-opened on the next request once
+		// the daemon reconnects).
 		sess.closeAllExternal()
-		removed := registry.RemoveClient(hello.ClientID)
-		for _, t := range removed {
-			proxies.stop(t.ID)
-			hub.Broadcast("TUNNEL_DELETED", map[string]string{"id": t.ID})
-		}
+		// Mark the client offline but keep all tunnel records and proxy
+		// listeners alive.  When the daemon reconnects, AddClient() flips
+		// Online back to true and the proxy listeners resume serving traffic.
+		registry.MarkOffline(hello.ClientID)
 		hub.Broadcast("CLIENT_DISCONNECTED", map[string]string{"id": hello.ClientID})
 		database.AddAuditLog("CLIENT_DISCONNECTED", hello.ClientID, "", remoteIP) //nolint:errcheck
 		log.Printf("control: client %s (%s) disconnected", hello.Name, hello.ClientID)

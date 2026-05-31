@@ -1,4 +1,4 @@
-// Package db provides SQLite-backed persistence for taildog relay.
+// Package db provides SQLite-backed persistence for renode relay.
 package db
 
 import (

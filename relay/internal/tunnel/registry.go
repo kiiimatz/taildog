@@ -68,8 +68,20 @@ func (r *Registry) AddClient(id, name, ip string) *Client {
 	return c
 }
 
+// MarkOffline marks a client as offline without touching its tunnels or
+// releasing ports.  Proxy listeners remain active so that when the daemon
+// reconnects, in-flight and new connections are served immediately.
+func (r *Registry) MarkOffline(id string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if c, ok := r.clients[id]; ok {
+		c.Online = false
+	}
+}
+
 // RemoveClient marks a client offline and releases all its tunnels.
 // Returns the tunnels that were removed so callers can stop proxy listeners.
+// Use MarkOffline instead when you want tunnels to persist across reconnects.
 func (r *Registry) RemoveClient(id string) []*Tunnel {
 	r.mu.Lock()
 	defer r.mu.Unlock()

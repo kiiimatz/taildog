@@ -1,11 +1,11 @@
 [Unit]
-Description=taildog tunnel client daemon
+Description=renode tunnel client daemon
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/taildog up --foreground
+ExecStart=/usr/local/bin/renode up --foreground
 Restart=on-failure
 RestartSec=5
 

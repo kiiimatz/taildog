@@ -6,8 +6,8 @@
 *.dylib
 *.test
 *.out
-relay/taildog-relay
-client/taildog
+relay/renode-relay
+client/renode
 relay/data/
 vendor/
 

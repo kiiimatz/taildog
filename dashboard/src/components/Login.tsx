@@ -84,7 +84,7 @@ export default function Login() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 22 }}>
           <div style={{ fontSize: 22, marginBottom: 6 }}>🐕</div>
-          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>taildog</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>renode</div>
           <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>Sign in to continue</div>
         </div>
 
@@ -189,7 +189,7 @@ export default function Login() {
         )}
 
         <div style={{ textAlign: 'center', marginTop: 16, fontSize: 10, color: 'var(--text-tertiary)' }}>
-          taildog v0.1.0
+          renode v0.1.0
         </div>
       </div>
     </div>

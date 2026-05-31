@@ -14,7 +14,7 @@ func platformOnError(msg string) {
 	user32 := syscall.NewLazyDLL("user32.dll")
 	messageBoxW := user32.NewProc("MessageBoxW")
 
-	titlePtr, _ := syscall.UTF16PtrFromString("Taildog Error")
+	titlePtr, _ := syscall.UTF16PtrFromString("Renode Error")
 	msgPtr, _ := syscall.UTF16PtrFromString(msg)
 
 	const mbIconError = 0x10 // MB_ICONERROR

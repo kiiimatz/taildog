@@ -20,7 +20,7 @@ func installAutostart() {
 
 	out, err := exec.Command("reg", "add",
 		`HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run`,
-		"/v", "Taildog",
+		"/v", "Renode",
 		"/t", "REG_SZ",
 		"/d", fmt.Sprintf(`"%s" up --foreground`, exe),
 		"/f",
@@ -29,5 +29,5 @@ func installAutostart() {
 		fmt.Printf("autostart: could not register startup entry: %v\n%s\n", err, out)
 		return
 	}
-	fmt.Println("taildog registered to start at login (HKCU registry)")
+	fmt.Println("renode registered to start at login (HKCU registry)")
 }

@@ -15,11 +15,11 @@ export default function Dashboard() {
     async function fetchData() {
       try {
         const [clients, info] = await Promise.all([getClients(), getServerInfo()])
-        console.log('[taildog] getClients() returned:', clients)
+        console.log('[renode] getClients() returned:', clients)
         setClients(clients)
         setServerInfo(info)
       } catch (err) {
-        console.error('[taildog] fetchData() failed:', err)
+        console.error('[renode] fetchData() failed:', err)
       }
     }
     // Pass fetchData as the onOpen callback so we re-fetch the full client/server
@@ -31,17 +31,11 @@ export default function Dashboard() {
 
   return (
     <ReactFlowProvider>
-      {/* Outer frame: viewport-sized, bordered, rounded, clipped */}
-      <div style={{
-        width: '100vw',
-        height: '100vh',
-        display: 'flex',
-        border: '0.5px solid var(--border-primary)',
-        borderRadius: 12,
-        overflow: 'hidden',
-      }}>
-        <Sidebar />
+      <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+        {/* Canvas fills the entire viewport */}
         <Canvas />
+        {/* Sidebar floats on top */}
+        <Sidebar />
       </div>
       <Toasts />
     </ReactFlowProvider>

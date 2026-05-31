@@ -28,15 +28,22 @@ export default function Sidebar() {
   }
 
   return (
-    <aside style={{
+    <aside data-sidebar="true" style={{
+      position: 'absolute',
+      top: 16,
+      left: 16,
       width: 240,
-      flexShrink: 0,
+      height: 'calc(100vh - 32px)',
       display: 'flex',
       flexDirection: 'column',
-      background: 'var(--bg-secondary)',
-      borderRight: '0.5px solid var(--border-primary)',
+      background: 'var(--sidebar-bg)',
+      backdropFilter: 'blur(20px) saturate(1.8)',
+      WebkitBackdropFilter: 'blur(20px) saturate(1.8)',
+      borderRadius: 14,
+      border: '0.5px solid var(--sidebar-border)',
+      boxShadow: 'var(--sidebar-shadow)',
       overflow: 'hidden',
-      position: 'relative',
+      zIndex: 10,
     }}>
 
       {/* ── CONNECTED CLIENTS ─────────────────────────────────────────── */}
@@ -118,7 +125,7 @@ export default function Sidebar() {
           padding: '3px 8px', borderRadius: 20,
         }}>
           <CheckCircle2 size={12} />
-          taildog up
+          renode up
         </span>
       </div>
       {/* ── Drop-to-remove overlay (shown while dragging a canvas node) ── */}

@@ -8,8 +8,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/google/uuid"
-	"github.com/kiiimatz/taildog/client/internal/config"
-	"github.com/kiiimatz/taildog/client/internal/daemon"
+	"github.com/kiiimatz/renode/client/internal/config"
+	"github.com/kiiimatz/renode/client/internal/daemon"
 	"github.com/spf13/cobra"
 )
 
@@ -31,9 +31,9 @@ func main() {
 
 func buildRoot() *cobra.Command {
 	root := &cobra.Command{
-		Use:   "taildog",
-		Short: "taildog – secure tunnel client",
-		Long:  "taildog manages encrypted tunnels to a remote relay server.",
+		Use:   "renode",
+		Short: "renode – secure tunnel client",
+		Long:  "renode manages encrypted tunnels to a remote relay server.",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return requireAdmin()
 		},
@@ -53,21 +53,21 @@ func buildRoot() *cobra.Command {
 }
 
 // ---------------------------------------------------------------------------
-// taildog up
+// renode up
 // ---------------------------------------------------------------------------
 
 func cmdUp() *cobra.Command {
 	var foreground bool
 	cmd := &cobra.Command{
 		Use:   "up <relay-host>",
-		Short: "Start the taildog daemon",
-		Long: `Start the taildog daemon and connect to the relay server.
+		Short: "Start the renode daemon",
+		Long: `Start the renode daemon and connect to the relay server.
 
 The relay server's IP or hostname is required.
 This overwrites relay_host in the config file.
 
-  taildog up 203.0.113.10
-  taildog up relay.example.com`,
+  renode up 203.0.113.10
+  renode up relay.example.com`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if foreground {
@@ -75,7 +75,7 @@ This overwrites relay_host in the config file.
 				return daemon.RunForeground()
 			}
 			if len(args) == 0 {
-				return fmt.Errorf("relay-host is required\n\nUsage: taildog up <relay-host>")
+				return fmt.Errorf("relay-host is required\n\nUsage: renode up <relay-host>")
 			}
 			cfg, err := config.Load()
 			if err != nil {
@@ -91,7 +91,7 @@ This overwrites relay_host in the config file.
 			}
 			installAutostart()
 			fmt.Printf("Logs: %s\n", daemon.LogPath())
-			fmt.Println("Run 'taildog logs' to check the connection status.")
+			fmt.Println("Run 'renode logs' to check the connection status.")
 			return nil
 		},
 	}
@@ -101,13 +101,13 @@ This overwrites relay_host in the config file.
 }
 
 // ---------------------------------------------------------------------------
-// taildog down
+// renode down
 // ---------------------------------------------------------------------------
 
 func cmdDown() *cobra.Command {
 	return &cobra.Command{
 		Use:   "down",
-		Short: "Stop the taildog daemon",
+		Short: "Stop the renode daemon",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return daemon.Stop()
 		},
@@ -115,7 +115,7 @@ func cmdDown() *cobra.Command {
 }
 
 // ---------------------------------------------------------------------------
-// taildog status
+// renode status
 // ---------------------------------------------------------------------------
 
 func cmdStatus() *cobra.Command {
@@ -172,7 +172,7 @@ func cmdStatus() *cobra.Command {
 }
 
 // ---------------------------------------------------------------------------
-// taildog add <proto> <localPort> [remotePort]
+// renode add <proto> <localPort> [remotePort]
 // ---------------------------------------------------------------------------
 
 func cmdAdd() *cobra.Command {
@@ -233,7 +233,7 @@ func cmdAdd() *cobra.Command {
 }
 
 // ---------------------------------------------------------------------------
-// taildog remove <id>
+// renode remove <id>
 // ---------------------------------------------------------------------------
 
 func cmdRemove() *cobra.Command {
@@ -279,7 +279,7 @@ func cmdRemove() *cobra.Command {
 }
 
 // ---------------------------------------------------------------------------
-// taildog logs
+// renode logs
 // ---------------------------------------------------------------------------
 
 func cmdLogs() *cobra.Command {
@@ -293,7 +293,7 @@ func cmdLogs() *cobra.Command {
 }
 
 // ---------------------------------------------------------------------------
-// taildog version
+// renode version
 // ---------------------------------------------------------------------------
 
 func cmdVersion() *cobra.Command {
@@ -301,7 +301,7 @@ func cmdVersion() *cobra.Command {
 		Use:   "version",
 		Short: "Print version information",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("taildog client v%s\n", clientVersion)
+			fmt.Printf("renode client v%s\n", clientVersion)
 		},
 	}
 }

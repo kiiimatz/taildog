@@ -1,4 +1,4 @@
-// Package daemon manages the taildog background process and relay connection.
+// Package daemon manages the renode background process and relay connection.
 package daemon
 
 import (
@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kiiimatz/taildog/client/internal/config"
+	"github.com/kiiimatz/renode/client/internal/config"
 )
 
 const (
@@ -30,12 +30,12 @@ const (
 
 // pidPath returns the path to the PID file.
 func pidPath() string {
-	return filepath.Join(config.ConfigDir(), "taildog.pid")
+	return filepath.Join(config.ConfigDir(), "renode.pid")
 }
 
 // LogPath returns the path to the daemon log file.
 func LogPath() string {
-	return filepath.Join(config.ConfigDir(), "taildog.log")
+	return filepath.Join(config.ConfigDir(), "renode.log")
 }
 
 // writePID writes the current process PID to the PID file.
@@ -131,7 +131,7 @@ func Start() error {
 		return fmt.Errorf("daemon process (PID: %d) exited immediately — check logs: %s", startedPID, logPath)
 	}
 
-	fmt.Printf("taildog daemon started (PID: %d)\n", startedPID)
+	fmt.Printf("renode daemon started (PID: %d)\n", startedPID)
 	return nil
 }
 
@@ -153,7 +153,7 @@ func RunForeground() error {
 	// would write every line twice to the same physical file.
 	log.SetOutput(logFile)
 	log.SetFlags(log.LstdFlags | log.Lmsgprefix)
-	log.SetPrefix("[taildog] ")
+	log.SetPrefix("[renode] ")
 
 	if err := writePID(); err != nil {
 		return fmt.Errorf("writing PID file: %w", err)

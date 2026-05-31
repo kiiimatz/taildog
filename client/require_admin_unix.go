@@ -9,7 +9,7 @@ import (
 
 func requireAdmin() error {
 	if os.Getuid() != 0 {
-		return fmt.Errorf("taildog must be run as root\n\n  sudo %s", os.Args[0])
+		return fmt.Errorf("renode must be run as root\n\n  sudo %s", os.Args[0])
 	}
 	return nil
 }

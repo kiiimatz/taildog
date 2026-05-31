@@ -1,4 +1,4 @@
-module github.com/kiiimatz/taildog/client
+module github.com/kiiimatz/renode/client
 
 go 1.22
 

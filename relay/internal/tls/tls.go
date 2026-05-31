@@ -116,8 +116,8 @@ func generate(certFile, keyFile string) error {
 	template := &x509.Certificate{
 		SerialNumber: serial,
 		Subject: pkix.Name{
-			Organization: []string{"taildog relay"},
-			CommonName:   "taildog-relay",
+			Organization: []string{"renode relay"},
+			CommonName:   "renode-relay",
 		},
 		NotBefore: now.Add(-time.Minute), // slight backdating for clock skew
 		NotAfter:  now.Add(10 * 365 * 24 * time.Hour),

@@ -13,7 +13,7 @@ const launchPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.taildog.daemon</string>
+    <string>com.renode.daemon</string>
     <key>ProgramArguments</key>
     <array>
         <string>%s</string>
@@ -25,9 +25,9 @@ const launchPlist = `<?xml version="1.0" encoding="UTF-8"?>
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/var/log/taildog.log</string>
+    <string>/var/log/renode.log</string>
     <key>StandardErrorPath</key>
-    <string>/var/log/taildog.log</string>
+    <string>/var/log/renode.log</string>
 </dict>
 </plist>
 `
@@ -39,18 +39,18 @@ func installAutostart() {
 		return
 	}
 
-	const plistPath = "/Library/LaunchDaemons/com.taildog.daemon.plist"
+	const plistPath = "/Library/LaunchDaemons/com.renode.daemon.plist"
 	if err := os.WriteFile(plistPath, []byte(fmt.Sprintf(launchPlist, exe)), 0644); err != nil {
 		fmt.Printf("autostart: writing %s: %v\n", plistPath, err)
 		return
 	}
 
 	// Load immediately (idempotent — bootout first in case it was loaded before).
-	exec.Command("launchctl", "bootout", "system/com.taildog.daemon").Run() //nolint:errcheck
+	exec.Command("launchctl", "bootout", "system/com.renode.daemon").Run() //nolint:errcheck
 	if out, err := exec.Command("launchctl", "bootstrap", "system", plistPath).CombinedOutput(); err != nil {
 		fmt.Printf("autostart: launchctl bootstrap: %v\n%s\n", err, out)
 		return
 	}
 
-	fmt.Println("taildog launch daemon installed — will start automatically at boot")
+	fmt.Println("renode launch daemon installed — will start automatically at boot")
 }
