@@ -57,6 +57,8 @@ export default function Canvas() {
   const clients = useAppStore((s) => s.clients)
   const serverInfo = useAppStore((s) => s.serverInfo)
   const canvasClients = useAppStore((s) => s.canvasClients)
+  const deletedTunnelID = useAppStore((s) => s.deletedTunnelID)
+  const setDeletedTunnelID = useAppStore((s) => s.setDeletedTunnelID)
   const setCanvasClients = useAppStore((s) => s.setCanvasClients)
   const addCanvasClient = useAppStore((s) => s.addCanvasClient)
   const removeCanvasClient = useAppStore((s) => s.removeCanvasClient)
@@ -362,8 +364,28 @@ export default function Canvas() {
     }
   }, [saveNow]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── React to TUNNEL_DELETED WebSocket events ─────────────────────────────
+  // Resets the matching tunnel node to 'idle' when the server confirms deletion.
+  // This is the only path that auto-resets tunnel status; the reconcile effect
+  // below only RESTORES active state, never resets it, to avoid false negatives
+  // caused by stale fetchData responses racing with live tunnel state.
+  useEffect(() => {
+    if (!deletedTunnelID) return
+    setNodes((nds) => nds.map((n) => {
+      if (n.type !== 'tunnel') return n
+      const d = n.data as TunnelNodeData & Record<string, unknown>
+      if (d.tunnelID !== deletedTunnelID) return n
+      return { ...n, data: { ...n.data, status: 'idle', tunnelID: undefined } }
+    }))
+    setDeletedTunnelID(null)
+  }, [deletedTunnelID]) // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Reconcile tunnel status against live server data ─────────────────────
-  // Runs whenever clients updates; restores 'active' or resets stale tunnels to 'idle'
+  // Runs whenever clients updates; ONLY restores 'active' (e.g. after page
+  // reload when canvas state arrives before client data).  Does NOT reset
+  // tunnels to 'idle' here — that is handled exclusively by the
+  // TUNNEL_DELETED effect above to prevent false-positive resets from stale
+  // fetchData responses racing with newly-created tunnels.
   useEffect(() => {
     if (!canSaveRef.current) return
     if (clients.length === 0) return
@@ -372,14 +394,9 @@ export default function Canvas() {
       if (n.type !== 'tunnel') return n
       const d = n.data as TunnelNodeData & Record<string, unknown>
       if (!d.tunnelID) return n
-      const serverActive = activeTunnelIDs.has(d.tunnelID as string)
-      if (serverActive && d.status !== 'active') {
+      if (activeTunnelIDs.has(d.tunnelID as string) && d.status !== 'active') {
         // Restore to active (e.g. after page reload when clients arrived after canvas)
         return { ...n, data: { ...n.data, status: 'active' } }
-      }
-      if (!serverActive && (d.status === 'active' || d.status === 'connecting')) {
-        // Tunnel dropped on server side
-        return { ...n, data: { ...n.data, status: 'idle', tunnelID: undefined } }
       }
       return n
     }))

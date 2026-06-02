@@ -44,6 +44,7 @@ export function connectEvents(onOpen?: () => void) {
           break
         case 'TUNNEL_DELETED':
           store.removeTunnel(data.id)
+          store.setDeletedTunnelID(data.id)
           break
       }
     } catch {

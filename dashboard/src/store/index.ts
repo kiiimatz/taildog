@@ -65,6 +65,11 @@ interface AppState {
   addTunnel: (clientID: string, tunnel: TunnelInfo) => void
   removeTunnel: (tunnelID: string) => void
 
+  // Signals Canvas to reset the matching tunnel node when a TUNNEL_DELETED
+  // event arrives.  The Canvas clears this after processing.
+  deletedTunnelID: string | null
+  setDeletedTunnelID: (id: string | null) => void
+
   // Canvas
   canvasClients: CanvasClient[]
   setCanvasClients: (ccs: CanvasClient[]) => void
@@ -119,6 +124,9 @@ export const useAppStore = create<AppState>((set) => ({
         tunnels: c.tunnels.filter((t) => t.id !== tunnelID),
       })),
     })),
+
+  deletedTunnelID: null,
+  setDeletedTunnelID: (id) => set({ deletedTunnelID: id }),
 
   canvasClients: [],
   setCanvasClients: (ccs) => set({ canvasClients: ccs }),
