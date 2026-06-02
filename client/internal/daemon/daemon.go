@@ -324,27 +324,24 @@ func Connect(cfg *config.Config) error {
 				// expected keep-alive reply
 
 			case "open":
-				var tunnelID, connID string
+				var tunnelID, connID, protocol string
 				var localPort int
 				json.Unmarshal(raw["tunnelID"], &tunnelID)   //nolint:errcheck
 				json.Unmarshal(raw["connID"], &connID)       //nolint:errcheck
 				json.Unmarshal(raw["localPort"], &localPort) //nolint:errcheck
-				log.Printf("open frame: tunnelID=%s connID=%s localPort=%d", tunnelID, connID, localPort)
+				json.Unmarshal(raw["protocol"], &protocol)   //nolint:errcheck
+				log.Printf("open frame: tunnelID=%s connID=%s localPort=%d protocol=%s", tunnelID, connID, localPort, protocol)
 
-				// Fall back to config lookup if relay didn't send localPort.
-				var localProto string
-				if localPort == 0 {
+				// Fall back to config lookup if relay didn't send localPort or protocol.
+				if localPort == 0 || protocol == "" {
 					for _, t := range cfg.Tunnels {
 						if t.ID == tunnelID {
-							localPort = t.LocalPort
-							localProto = t.Protocol
-							break
-						}
-					}
-				} else {
-					for _, t := range cfg.Tunnels {
-						if t.ID == tunnelID {
-							localProto = t.Protocol
+							if localPort == 0 {
+								localPort = t.LocalPort
+							}
+							if protocol == "" {
+								protocol = t.Protocol
+							}
 							break
 						}
 					}
@@ -356,7 +353,7 @@ func Connect(cfg *config.Config) error {
 				}
 
 				dialProto := "tcp"
-				if localProto == "udp" {
+				if protocol == "udp" {
 					dialProto = "udp"
 				}
 				localConn, err := net.Dial(dialProto, fmt.Sprintf("localhost:%d", localPort))

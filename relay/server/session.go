@@ -57,9 +57,15 @@ func (s *clientSession) send(v interface{}) error {
 }
 
 // openConn sends an "open" frame to the daemon and registers the external conn.
-func (s *clientSession) openConn(tunnelID string, extC extConn, localPort int) (string, error) {
+func (s *clientSession) openConn(tunnelID, protocol string, extC extConn, localPort int) (string, error) {
 	connID := uuid.New().String()
-	err := s.send(map[string]interface{}{"type": "open", "tunnelID": tunnelID, "connID": connID, "localPort": localPort})
+	err := s.send(map[string]interface{}{
+		"type":      "open",
+		"tunnelID":  tunnelID,
+		"connID":    connID,
+		"localPort": localPort,
+		"protocol":  protocol,
+	})
 	if err != nil {
 		return "", err
 	}

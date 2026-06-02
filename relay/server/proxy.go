@@ -161,7 +161,7 @@ func handleProxyConn(extConn net.Conn, tunnelID, clientID string, localPort int)
 		return
 	}
 
-	connID, err := sess.openConn(tunnelID, &tcpExtConn{conn: extConn}, localPort)
+	connID, err := sess.openConn(tunnelID, "tcp", &tcpExtConn{conn: extConn}, localPort)
 	if err != nil {
 		log.Printf("proxy: openConn failed: %v", err)
 		return
@@ -219,7 +219,7 @@ func handleUDPProxy(pc net.PacketConn, tunnelID, clientID string, localPort int)
 		addrKey := srcAddr.String()
 		vs, exists := addrToSess[addrKey]
 		if !exists {
-			connID, err := sess.openConn(tunnelID, &udpExtConn{pc: pc, addr: srcAddr}, localPort)
+			connID, err := sess.openConn(tunnelID, "udp", &udpExtConn{pc: pc, addr: srcAddr}, localPort)
 			if err != nil {
 				log.Printf("proxy udp: openConn for %s failed: %v", addrKey, err)
 				continue
