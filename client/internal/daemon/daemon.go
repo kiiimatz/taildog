@@ -332,10 +332,19 @@ func Connect(cfg *config.Config) error {
 				log.Printf("open frame: tunnelID=%s connID=%s localPort=%d", tunnelID, connID, localPort)
 
 				// Fall back to config lookup if relay didn't send localPort.
+				var localProto string
 				if localPort == 0 {
 					for _, t := range cfg.Tunnels {
 						if t.ID == tunnelID {
 							localPort = t.LocalPort
+							localProto = t.Protocol
+							break
+						}
+					}
+				} else {
+					for _, t := range cfg.Tunnels {
+						if t.ID == tunnelID {
+							localProto = t.Protocol
 							break
 						}
 					}
@@ -346,7 +355,11 @@ func Connect(cfg *config.Config) error {
 					continue
 				}
 
-				localConn, err := net.Dial("tcp", fmt.Sprintf("localhost:%d", localPort))
+				dialProto := "tcp"
+				if localProto == "udp" {
+					dialProto = "udp"
+				}
+				localConn, err := net.Dial(dialProto, fmt.Sprintf("localhost:%d", localPort))
 				if err != nil {
 					log.Printf("open: dial localhost:%d failed: %v", localPort, err)
 					safeEncode(map[string]string{"type": "close", "connID": connID}) //nolint:errcheck

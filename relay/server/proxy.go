@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"sync"
+	"time"
 )
 
 // sessionStore maps clientID → *clientSession.
@@ -40,13 +41,16 @@ func (s *sessionStore) get(clientID string) (*clientSession, bool) {
 // sessions is the global per-binary daemon session registry.
 var sessions = newSessionStore()
 
-// proxyEntry holds a tunnel's TCP listener and its remote port number.
+// proxyEntry holds a tunnel's listener and its metadata.
+// For TCP tunnels ln is set; for UDP tunnels pc is set.
 type proxyEntry struct {
-	ln         net.Listener
+	protocol   string
 	remotePort int
+	ln         net.Listener   // TCP
+	pc         net.PacketConn // UDP
 }
 
-// proxyStore manages tunnel TCP listeners.
+// proxyStore manages tunnel proxy listeners (TCP and UDP).
 type proxyStore struct {
 	mu   sync.Mutex
 	data map[string]proxyEntry // tunnelID → entry
@@ -55,14 +59,22 @@ type proxyStore struct {
 // proxies is the global tunnel proxy registry.
 var proxies = &proxyStore{data: make(map[string]proxyEntry)}
 
-func (p *proxyStore) start(remotePort int, tunnelID, clientID string, localPort int) error {
+// start opens a proxy listener for the given protocol.
+func (p *proxyStore) start(proto string, remotePort int, tunnelID, clientID string, localPort int) error {
+	if proto == "udp" {
+		return p.startUDP(remotePort, tunnelID, clientID, localPort)
+	}
+	return p.startTCP(remotePort, tunnelID, clientID, localPort)
+}
+
+func (p *proxyStore) startTCP(remotePort int, tunnelID, clientID string, localPort int) error {
 	addr := fmt.Sprintf(":%d", remotePort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
-		return fmt.Errorf("proxy: listen %s: %w", addr, err)
+		return fmt.Errorf("proxy: listen tcp %s: %w", addr, err)
 	}
 	p.mu.Lock()
-	p.data[tunnelID] = proxyEntry{ln: ln, remotePort: remotePort}
+	p.data[tunnelID] = proxyEntry{protocol: "tcp", ln: ln, remotePort: remotePort}
 	p.mu.Unlock()
 
 	ufwAllow(remotePort, "tcp")
@@ -76,7 +88,24 @@ func (p *proxyStore) start(remotePort int, tunnelID, clientID string, localPort 
 			go handleProxyConn(conn, tunnelID, clientID, localPort)
 		}
 	}()
-	log.Printf("proxy: listening on :%d for tunnel %s (local:%d)", remotePort, tunnelID, localPort)
+	log.Printf("proxy: listening on tcp :%d for tunnel %s (local:%d)", remotePort, tunnelID, localPort)
+	return nil
+}
+
+func (p *proxyStore) startUDP(remotePort int, tunnelID, clientID string, localPort int) error {
+	addr := fmt.Sprintf(":%d", remotePort)
+	pc, err := net.ListenPacket("udp", addr)
+	if err != nil {
+		return fmt.Errorf("proxy: listen udp %s: %w", addr, err)
+	}
+	p.mu.Lock()
+	p.data[tunnelID] = proxyEntry{protocol: "udp", pc: pc, remotePort: remotePort}
+	p.mu.Unlock()
+
+	ufwAllow(remotePort, "udp")
+
+	go handleUDPProxy(pc, tunnelID, clientID, localPort)
+	log.Printf("proxy: listening on udp :%d for tunnel %s (local:%d)", remotePort, tunnelID, localPort)
 	return nil
 }
 
@@ -85,11 +114,17 @@ func (p *proxyStore) stop(tunnelID string) {
 	entry, ok := p.data[tunnelID]
 	delete(p.data, tunnelID)
 	p.mu.Unlock()
-	if ok {
-		entry.ln.Close()
-		ufwDelete(entry.remotePort, "tcp")
-		log.Printf("proxy: stopped listener for tunnel %s", tunnelID)
+	if !ok {
+		return
 	}
+	if entry.ln != nil {
+		entry.ln.Close()
+	}
+	if entry.pc != nil {
+		entry.pc.Close()
+	}
+	ufwDelete(entry.remotePort, entry.protocol)
+	log.Printf("proxy: stopped listener for tunnel %s", tunnelID)
 }
 
 // stopAll closes every active proxy listener and removes their UFW rules.
@@ -103,29 +138,34 @@ func (p *proxyStore) stopAll() {
 	p.data = make(map[string]proxyEntry)
 	p.mu.Unlock()
 	for tunnelID, entry := range entries {
-		entry.ln.Close()
-		ufwDelete(entry.remotePort, "tcp")
+		if entry.ln != nil {
+			entry.ln.Close()
+		}
+		if entry.pc != nil {
+			entry.pc.Close()
+		}
+		ufwDelete(entry.remotePort, entry.protocol)
 		log.Printf("proxy: stopped listener for tunnel %s (shutdown)", tunnelID)
 	}
 }
 
+// ── TCP proxy ────────────────────────────────────────────────────────────────
+
 func handleProxyConn(extConn net.Conn, tunnelID, clientID string, localPort int) {
 	defer extConn.Close()
-	log.Printf("proxy: new conn from %s → tunnel %s clientID %s local:%d", extConn.RemoteAddr(), tunnelID, clientID, localPort)
+	log.Printf("proxy: new tcp conn from %s → tunnel %s clientID %s local:%d", extConn.RemoteAddr(), tunnelID, clientID, localPort)
 
 	sess, ok := sessions.get(clientID)
 	if !ok {
 		log.Printf("proxy: no session for client %s — daemon not connected?", clientID)
 		return
 	}
-	log.Printf("proxy: session found for client %s, sending open frame", clientID)
 
-	connID, err := sess.openConn(tunnelID, extConn, localPort)
+	connID, err := sess.openConn(tunnelID, &tcpExtConn{conn: extConn}, localPort)
 	if err != nil {
 		log.Printf("proxy: openConn failed: %v", err)
 		return
 	}
-	log.Printf("proxy: open frame sent, connID=%s", connID)
 	defer sess.closeConn(connID, true)
 
 	// Read from external connection, send data frames to daemon.
@@ -142,6 +182,73 @@ func handleProxyConn(extConn net.Conn, tunnelID, clientID string, localPort int)
 		}
 		if err != nil {
 			break
+		}
+	}
+}
+
+// ── UDP proxy ────────────────────────────────────────────────────────────────
+
+const udpIdleTimeout = 5 * time.Minute
+
+type udpVirtualSession struct {
+	connID   string
+	lastSeen time.Time
+}
+
+// handleUDPProxy reads datagrams from pc and multiplexes them over the daemon
+// control channel as virtual connections keyed by source address.
+// Each unique (srcAddr) is a separate virtual session; the daemon side dials
+// a connected UDP socket to localPort for each one.
+func handleUDPProxy(pc net.PacketConn, tunnelID, clientID string, localPort int) {
+	addrToSess := make(map[string]*udpVirtualSession) // srcAddr.String() → virtual session
+	lastCleanup := time.Now()
+	buf := make([]byte, 65536)
+
+	for {
+		n, srcAddr, err := pc.ReadFrom(buf)
+		if err != nil {
+			return // pc was closed (tunnel deleted or server shutdown)
+		}
+
+		sess, ok := sessions.get(clientID)
+		if !ok {
+			// Daemon not connected; drop the datagram.
+			continue
+		}
+
+		addrKey := srcAddr.String()
+		vs, exists := addrToSess[addrKey]
+		if !exists {
+			connID, err := sess.openConn(tunnelID, &udpExtConn{pc: pc, addr: srcAddr}, localPort)
+			if err != nil {
+				log.Printf("proxy udp: openConn for %s failed: %v", addrKey, err)
+				continue
+			}
+			vs = &udpVirtualSession{connID: connID, lastSeen: time.Now()}
+			addrToSess[addrKey] = vs
+			log.Printf("proxy udp: new session %s → connID %s local:%d", addrKey, connID, localPort)
+		}
+		vs.lastSeen = time.Now()
+
+		payload := base64.StdEncoding.EncodeToString(buf[:n])
+		if err := sess.send(map[string]string{
+			"type": "data", "connID": vs.connID, "payload": payload,
+		}); err != nil {
+			log.Printf("proxy udp: send data frame for %s: %v", addrKey, err)
+		}
+
+		// Periodic idle-session cleanup (runs in the read goroutine to avoid locks).
+		if time.Since(lastCleanup) > time.Minute {
+			lastCleanup = time.Now()
+			for key, s := range addrToSess {
+				if time.Since(s.lastSeen) > udpIdleTimeout {
+					if sess2, ok2 := sessions.get(clientID); ok2 {
+						sess2.closeConn(s.connID, true)
+					}
+					delete(addrToSess, key)
+					log.Printf("proxy udp: expired idle session %s", key)
+				}
+			}
 		}
 	}
 }

@@ -105,8 +105,8 @@ func Run(cfg Config) error {
 		Hub:             hub,
 		DashboardOrigin: cfg.DashboardOrigin,
 		StartTime:       time.Now(),
-		StartTunnelProxy: func(remotePort int, tunnelID, clientID string, localPort int) error {
-			return proxies.start(remotePort, tunnelID, clientID, localPort)
+		StartTunnelProxy: func(protocol string, remotePort int, tunnelID, clientID string, localPort int) error {
+			return proxies.start(protocol, remotePort, tunnelID, clientID, localPort)
 		},
 		StopTunnelProxy: func(tunnelID string) {
 			proxies.stop(tunnelID)
